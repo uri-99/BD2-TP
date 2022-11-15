@@ -7,6 +7,9 @@ from typing import Union
 from fastapi import FastAPI, HTTPException
 app = FastAPI()
 
+import pymongo
+from pymongo import MongoClient
+
 user_ids = ['6373e8c9ea6af1dc84089d97', '6373e902a5e607af97b4b1fb']
 users = {
     '6373e8c9ea6af1dc84089d97': {
@@ -92,3 +95,12 @@ def delete_document():
 @app.get("/items/{item_id}")
 def read_item(item_id: int, q: Union[str, None] = None):
     return {"item_id": item_id, "q": q}
+
+
+
+client = MongoClient('mongodb+srv://admin:3ZmSBmNUYaKWfWrb@bd2.rvwdrjj.mongodb.net/test')
+BD2 = client.BD2
+notes = BD2.File
+users = BD2.User
+print(notes.find_one())
+print(users.find_one())
