@@ -19,7 +19,10 @@ users = {
         'notes': [
             "6373eee1d9c1f8cd2703e2f0"
         ],
-        'favourites': [
+        'favorites': [
+
+        ],
+        'folders': [
 
         ]
     },
@@ -30,8 +33,11 @@ users = {
         'notes': [
             '6373f2bf27a4e3b55da2cc3c'
         ],
-        'favourites': [
+        'favorites': [
             '6373eee1d9c1f8cd2703e2f0'
+        ],
+        'folders': [
+
         ]
     }
 }
@@ -47,7 +53,7 @@ users = {
     },
     tags=['users']
 )
-def get_users(limit: int = 10, page: int = 1, username: Union[str, None] = None):
+async def get_users(limit: int = 10, page: int = 1, username: Union[str, None] = None):
     if limit < 0:
         raise HTTPException(status_code=400, detail='Page size must be higher than zero')
     if page < 1:

@@ -19,7 +19,10 @@ users = {
         'notes': [
             "6373eee1d9c1f8cd2703e2f0"
         ],
-        'favourites': [
+        'favorites': [
+
+        ],
+        'folders': [
 
         ]
     },
@@ -30,12 +33,14 @@ users = {
         'notes': [
             '6373f2bf27a4e3b55da2cc3c'
         ],
-        'favourites': [
+        'favorites': [
             '6373eee1d9c1f8cd2703e2f0'
+        ],
+        'folders': [
+
         ]
     }
 }
-
 
 documents = {
     '6373eee1d9c1f8cd2703e2f0': {

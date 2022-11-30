@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from v1.endpoints import users, documents, folders, favorites
+from pymongo import MongoClient
 
 description = """
 Notilokos API lets you manage user and documents data of the app.
@@ -9,6 +10,7 @@ Authorization is managed via JWT tokens on each request
 
 You can **read and create users and documents**, while also being able to **modify** the latter ones.
 """
+
 
 app = FastAPI(
     title="Los Notilokos",
@@ -28,3 +30,11 @@ app.openapi_tags = [
     folders.tag_metadata,
     favorites.tag_metadata
 ]
+
+
+client = MongoClient('mongodb+srv://admin:3ZmSBmNUYaKWfWrb@bd2.rvwdrjj.mongodb.net/test')
+BD2 = client.BD2
+notes = BD2.File
+users = BD2.User
+print(notes.find_one())
+print(users.find_one())
