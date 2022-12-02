@@ -11,9 +11,9 @@ You can **read and create users and documents**, while also being able to **modi
 
 
 class Settings(BaseSettings):
-    app_name: str = "Los Notilokos"
-    description: str = description
-    mongo_pass: str = "MONGODB_PASS"
+    app_name = "Los Notilokos"
+    description = description
+    mongo_pass = "MONGODB_PASS"
 
     class Config:
         env_file = ".env"

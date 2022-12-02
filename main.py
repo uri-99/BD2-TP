@@ -1,9 +1,6 @@
 from fastapi import FastAPI
 from v1.endpoints import users, documents, folders, favorites
-from pymongo import MongoClient
 from core.settings import Settings
-from dotenv import load_dotenv
-import os
 
 settings = Settings()
 
@@ -26,12 +23,13 @@ app.openapi_tags = [
     favorites.tag_metadata
 ]
 
-load_dotenv(settings.Config.env_file)
+# load_dotenv(settings.Config.env_file)
 
 # DB Connection code example
-client = MongoClient(os.environ.get(settings.mongo_pass))
-BD2 = client.BD2
-notes = BD2.File
-users = BD2.User
-print(notes.find_one())
-print(users.find_one())
+# client = MongoClient(os.environ.get(settings.mongo_pass))
+# BD2 = client.BD2
+# notes = BD2.File
+# users = BD2.User
+# print(notes.find_one())
+# print(users.find_one())
+# client.close()

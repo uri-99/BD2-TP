@@ -1,3 +1,5 @@
+from bson import ObjectId
+
 from .. import *
 
 
@@ -8,6 +10,7 @@ class NewUser(BaseModel):
 
 
 class User(BaseModel):
+    id: str
     username: str
     mail: str
     notes: List[str]

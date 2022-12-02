@@ -1,4 +1,12 @@
+import json
+
+import bson.errors
+from bson import json_util
+from fastapi import Request, Response
+
+from core.helpers.converters import oidlist_to_str
 from . import *
+from core.db_client import MongoManager
 
 router = APIRouter(
     prefix="/users",
@@ -11,37 +19,7 @@ tag_metadata = {
         'description': 'Operations with users'
 }
 
-users = {
-    '6373e8c9ea6af1dc84089d97': {
-        'id': '6373e8c9ea6af1dc84089d97',
-        'username': "user1",
-        'mail': "user1@gmail.com",
-        'notes': [
-            "6373eee1d9c1f8cd2703e2f0"
-        ],
-        'favorites': [
-
-        ],
-        'folders': [
-
-        ]
-    },
-    '6373e902a5e607af97b4b1fb': {
-        'id': '6373e902a5e607af97b4b1fb',
-        'username': "user2",
-        'mail': "user2@gmail.com",
-        'notes': [
-            '6373f2bf27a4e3b55da2cc3c'
-        ],
-        'favorites': [
-            '6373eee1d9c1f8cd2703e2f0'
-        ],
-        'folders': [
-
-        ]
-    }
-}
-
+users_db = MongoManager.get_instance().BD2.User
 
 @router.get(
     "",
@@ -58,34 +36,44 @@ async def get_users(limit: int = 10, page: int = 1, username: Union[str, None] =
         raise HTTPException(status_code=400, detail='Page size must be higher than zero')
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
-    # vvv Dummy code vvv
-    user_list = list(users.values())
+
+    username_filter = {}
     if username is not None:
-        user_list = list(filter(lambda user: user['username'] == username, user_list))
-    return user_list[(page - 1) * limit: page * limit]
+        username_filter = {"username": username}
+    result = users_db.find(username_filter, {"password": 0}).skip((page - 1) * limit).limit(limit)
+    users = list()
+    for user in result:
+        users.append({
+            'id': str(user['_id']),
+            'username': user['username'],
+            'mail': user['mail'],
+            'notes': oidlist_to_str(user['notes']),
+            'favorites': oidlist_to_str(user['favorites']),
+            'folders': oidlist_to_str(user['folders'])
+        })
+    return json.loads(json_util.dumps(users))
 
 
+# TODO: Error checking when post fails
 @router.post(
     "",
-    response_model=User,
     status_code=status.HTTP_201_CREATED,
     responses={
         201: {'description': 'User successfully created'},
     },
     tags=['users']
 )
-def create_user(new_user: NewUser):
-    # Mongo generaría el id cuando le mandamos el insert, pero acá lo hacemos automático
-    new_user_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
-    # La contraseña se almacenaría pero no se devuelve
-    users[new_user_id] = {
-        '_id': new_user_id,
-        'username': new_user.username,
-        'mail': new_user.mail,
-        'notes': [],
-        'favourites': []
-    }
-    return users[new_user_id]
+def create_user(new_user: NewUser, request: Request, response: Response):
+    result = users_db.insert_one({
+            'username': new_user.username,
+            'mail': new_user.mail,
+            'password': new_user.password,
+            'notes': [],
+            'favorites': [],
+            'folders': []
+    })
+    response.headers.append("Location", request.url._url + "/" + str(result.inserted_id))
+    return {}
 
 
 @router.get(
@@ -98,11 +86,23 @@ def create_user(new_user: NewUser):
     },
     tags=['users']
 )
-def get_user(id: int):
-    if id in users:
-        return users[id]
-    else:
+def get_user(id: str):
+    try:
+        user_id = ObjectId(id)
+    except bson.errors.InvalidId:
         raise HTTPException(status_code=404, detail="User not found")
+
+    result = users_db.find_one({"_id": user_id}, {"password": 0})
+    if result is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return json.loads(json_util.dumps({
+        'id': str(result['_id']),
+        'username': result['username'],
+        'mail': result['mail'],
+        'notes': oidlist_to_str(result['notes']),
+        'favorites': oidlist_to_str(result['favorites']),
+        'folders': oidlist_to_str(result['folders'])
+    }))
 
 
 @router.delete(
@@ -114,8 +114,12 @@ def get_user(id: int):
     },
     tags=['users']
 )
-def get_user(id: int):
-    if id in users:
-        users[id] = {}
-    else:
+def delete_user(id: str):
+    try:
+        user_id = ObjectId(id)
+    except bson.errors.InvalidId:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    result = users_db.delete_one({"_id": user_id})
+    if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
