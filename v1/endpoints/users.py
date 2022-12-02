@@ -1,4 +1,11 @@
+import json
+
+from bson import json_util, ObjectId
+from fastapi import Request, Response
+from fastapi.responses import JSONResponse
+
 from . import *
+from core.db_client import MongoManager
 
 router = APIRouter(
     prefix="/users",
@@ -42,6 +49,8 @@ users = {
     }
 }
 
+users_db = MongoManager.get_instance().BD2.User
+
 
 @router.get(
     "",
@@ -59,33 +68,51 @@ async def get_users(limit: int = 10, page: int = 1, username: Union[str, None] =
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
     # vvv Dummy code vvv
-    user_list = list(users.values())
+    # print(MongoManager.get_instance())
+    # print(os.environ.get("MONGODB_PASS"))
+    # return users_db.find_one()
+    username_filter = {}
     if username is not None:
-        user_list = list(filter(lambda user: user['username'] == username, user_list))
-    return user_list[(page - 1) * limit: page * limit]
+        username_filter = {"username": username}
+    return json.loads(json_util.dumps(users_db.find(username_filter, {"_id": 1, "password": 0})
+                                      .skip((page - 1) * limit).limit(limit)))
+    # user_list = list(users.values())
+    # if username is not None:
+    #     user_list = list(filter(lambda user: user['username'] == username, user_list))
+    # return user_list[(page - 1) * limit: page * limit]
 
 
+# TODO: Error checking when post fails
 @router.post(
     "",
-    response_model=User,
     status_code=status.HTTP_201_CREATED,
     responses={
         201: {'description': 'User successfully created'},
     },
     tags=['users']
 )
-def create_user(new_user: NewUser):
+def create_user(new_user: NewUser, request: Request, response: Response):
+    result = users_db.insert_one({
+            'username': new_user.username,
+            'mail': new_user.mail,
+            'password': new_user.password,
+            'notes': [],
+            'favorites': [],
+            'folders': []
+    })
+    response.headers.append("Location", request.url._url + "/" + str(result.inserted_id))
+    return {}
     # Mongo generaría el id cuando le mandamos el insert, pero acá lo hacemos automático
-    new_user_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
+    # new_user_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     # La contraseña se almacenaría pero no se devuelve
-    users[new_user_id] = {
-        '_id': new_user_id,
-        'username': new_user.username,
-        'mail': new_user.mail,
-        'notes': [],
-        'favourites': []
-    }
-    return users[new_user_id]
+    # users[new_user_id] = {
+    #     '_id': new_user_id,
+    #     'username': new_user.username,
+    #     'mail': new_user.mail,
+    #     'notes': [],
+    #     'favourites': []
+    # }
+    # return users[new_user_id]
 
 
 @router.get(
@@ -98,11 +125,11 @@ def create_user(new_user: NewUser):
     },
     tags=['users']
 )
-def get_user(id: int):
-    if id in users:
-        return users[id]
-    else:
+def get_user(id: str):
+    result = users_db.find_one({"_id": ObjectId(id)}, {"password": 0})
+    if result is None:
         raise HTTPException(status_code=404, detail="User not found")
+    return json.loads(json_util.dumps(result))
 
 
 @router.delete(
