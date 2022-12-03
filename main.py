@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from v1.endpoints import users, documents, folders, favorites
+from v1.endpoints import users, documents, folders
 from core.settings import Settings
 
 settings = Settings()
@@ -14,13 +14,11 @@ app = FastAPI(
 app.include_router(users.router)
 app.include_router(documents.router)
 app.include_router(folders.router)
-app.include_router(favorites.router)
 
 app.openapi_tags = [
     users.tag_metadata,
     documents.tag_metadata,
-    folders.tag_metadata,
-    favorites.tag_metadata
+    folders.tag_metadata
 ]
 
 # load_dotenv(settings.Config.env_file)
