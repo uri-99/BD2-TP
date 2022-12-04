@@ -58,8 +58,10 @@ documents = {
         400: {'description': 'Sent wrong query param'}
     }
 )
-def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = None, author: Union[str, None] = None):
-
+def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = ""):
+    wildContent = "*" + content + "*"
+    wildTitle = "*" + title + "*"
+    wildDescription = "*" + description + "*"
     if limit < 0:
         raise HTTPException(status_code=400, detail='Page size must be higher than zero')
     if page < 1:
@@ -72,19 +74,21 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = None
     #     doc_list = list(filter(lambda doc: doc['owner'] == author, doc_list))
     # return doc_list[(page - 1) * limit: page * limit]
     print(title)
-    resp = elastic.search(index="documents", query={
-        "bool": {
-            "should": [
-                {"fuzzy": {"title": title}},
-                {"fuzzy": {"createdBy": author}} #TODO : esto requiere que se le pase este parametro
-            ],
-            "filter": [
-                {"term": {
-                    "public": "true"
-                }}
-            ]
-        }
-    })
+    resp = elastic.search(index="documents", query={"bool": {
+      "should": [
+        { "fuzzy": {"title": title}},
+        { "fuzzy": {"createdBy": author}},
+        { "fuzzy": {"description": description}},
+        { "wildcard": {"title": {"value": wildTitle}}},
+        { "wildcard": {"description": {"value": wildDescription}}},
+        { "wildcard" : {"content": {"value": wildContent}}}
+      ],
+      "filter": [
+        {"term": {
+          "public": "true"
+        }}
+      ]
+    }})
     print(resp)
     return resp["hits"]["hits"]
 
@@ -132,7 +136,7 @@ def create_document(doc: NewDocument, request: Request, response: Response):
         404: {'description': 'Document not found for id sent'},
     }
 )
-def get_document(id: int):
+def get_document(id: str):
     # TODO : no permitir gets sin permiso
     try:
         resp = elastic.get(index="documents", id=id)
@@ -152,7 +156,7 @@ def get_document(id: int):
         404: {'description': 'Document not found'}
     }
 )
-def modify_document(id: int, doc: UpdateDocument, request: Request, response: Response):
+def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response):
     editors = doc.editors
     if doc.lastEditedBy not in editors:
         editors.append(doc.lastEditedBy)
@@ -213,6 +217,6 @@ def modify_document(id: int, doc: UpdateDocument, request: Request, response: Re
         404: {'description': 'Document not found'}
     }
 )
-def delete_document(id: int):
+def delete_document(id: str):
     resp = elastic.delete(index="documents", id=id)
     return resp
