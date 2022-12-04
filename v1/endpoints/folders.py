@@ -11,63 +11,9 @@ tag_metadata = {
         'description': 'Operations with document folders'
 }
 
-users = {
-    '6373e8c9ea6af1dc84089d97': {
-        'id': '6373e8c9ea6af1dc84089d97',
-        'username': "user1",
-        'mail': "user1@gmail.com",
-        'notes': [
-            "6373eee1d9c1f8cd2703e2f0"
-        ],
-        'favorites': [
-
-        ],
-        'folders': [
-
-        ]
-    },
-    '6373e902a5e607af97b4b1fb': {
-        'id': '6373e902a5e607af97b4b1fb',
-        'username': "user2",
-        'mail': "user2@gmail.com",
-        'notes': [
-            '6373f2bf27a4e3b55da2cc3c'
-        ],
-        'favorites': [
-            '6373eee1d9c1f8cd2703e2f0'
-        ],
-        'folders': [
-
-        ]
-    }
-}
-
-documents = {
-    '6373eee1d9c1f8cd2703e2f0': {
-        'id': '6373eee1d9c1f8cd2703e2f0',
-        "createdBy": "6373e8c9ea6af1dc84089d97",
-        "created": 'ISODate("2016-05-18T16:00:00Z")',
-        "lastEditedBy": "6373e902a5e607af97b4b1fb",
-        "lastEdited": 'ISODate("2016-06-10T16:30:05Z")',
-        "editors": ["6373e8c9ea6af1dc84089d97", "6373e902a5e607af97b4b1fb"],
-        "title": "Persistencia poliglota",
-        "description": "Cosas a tener en cuenta",
-        "content": ["## Introducción", "### Concepto", "La persistencia poliglota consiste en ..."],
-        "public": True
-    },
-    '6373f2bf27a4e3b55da2cc3c': {
-        'id': '6373f2bf27a4e3b55da2cc3c',
-        "createdBy": "6373e902a5e607af97b4b1fb",
-        "created": 'ISODate("2016-05-18T16:00:00Z")',
-        "lastEditedBy": "6373e902a5e607af97b4b1fb",
-        "lastEdited": 'ISODate("2016-05-18T16:00:00Z")',
-        "editors": ["6373e902a5e607af97b4b1fb"],
-        "title": "Por qué usar Elastic Search para búsqueda",
-        "description": "Nota sobre ES y sus múltiples beneficios",
-        "content": ["## Abstract", "Elastic Search es una herramienta muy usada hoy en dia..."],
-        "public": True
-    }
-}
+folders_page_size = 10
+folders_db = MongoManager.get_instance().BD2.Folder
+users_db = MongoManager.get_instance().BD2.User
 
 
 @router.get(
@@ -79,36 +25,53 @@ documents = {
         400: {'description': 'Sent wrong query param'}
     }
 )
-def get_folders(limit: int = 10, page: int = 1, title: Union[str, None] = None, author: Union[str, None] = None):
-    if limit < 0:
-        raise HTTPException(status_code=400, detail='Page size must be higher than zero')
+def get_folders(request: Request, response: Response, page: int = 1, title: Union[str, None] = None, author: Union[str, None] = None):
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
-    # vvv Dummy code vvv
-    doc_list = list(documents.values())
+
+    folder_filter = {}
     if title is not None:
-        doc_list = list(filter(lambda doc: doc['title'] == title, doc_list))
+        folder_filter["title"] = title
     if author is not None:
-        doc_list = list(filter(lambda doc: doc['owner'] == author, doc_list))
-    return doc_list[(page - 1) * limit: page * limit]
+        try:
+            folder_filter["author"] = ObjectId(author)
+        except bson.errors.InvalidId:
+            return []
+    result = folders_db.find(folder_filter, {"public": 0}).skip((page - 1) * folders_page_size).limit(folders_page_size)
+    folder_count = folders_db.count_documents({})
+    folders = list()
+    for folder in result:
+        folders.append({
+            'self': str(request.url.remove_query_params(["title", "author"])) + "/" + str(folder['_id']),
+            'id': str(folder['_id']),
+            'createdBy': str(folder['createdBy']),
+            'lastEditedBy': str(folder['lastEditedBy']),
+            'createdOn': str(folder['createdOn']),
+            'lastEdited': str(folder['lastEdited']),
+            'title': folder['title'],
+            'description': folder['description'],
+            'content': oidlist_to_str(folder['content']),
+            'editors': oidlist_to_str(folder['editors'])
+        })
+    response.headers.append("first", str(request.url.remove_query_params(["page"])) + "?page=1")
+    response.headers.append("last", str(request.url.remove_query_params(["page"]))
+                            + "?page=" + str(int((folder_count - 1) / folders_page_size) + 1))
+    return json.loads(json_util.dumps(folders))
 
 
 @router.post(
     "",
-    response_model=Folder,
     status_code=status.HTTP_201_CREATED,
     responses={
-        201: {'description': 'Document successfully created'}
+        201: {'description': 'Document successfully created'},
+        400: {'description': 'Sent wrong param'}
     }
 )
-def create_folder(doc: NewDocument):
-    if doc.createdBy not in users:
-        raise HTTPException(status_code=400, detail='Creator user sent does not exist')
-    new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
-    documents[new_doc_id] = {
-        '_id': new_doc_id,
+def create_folder(doc: NewFolder, request: Request, response: Response):
+    now = datetime.datetime.now()
+    result = folders_db.insert_one({
         'createdBy': doc.createdBy,
-        'created': 'ISODate("2022-11-15T19:51:36Z")',
+        'createdOn': now,
         'lastEditedBy': '',
         'lastEdited': '',
         'editors': [
@@ -118,8 +81,9 @@ def create_folder(doc: NewDocument):
         'description': doc.description,
         'content': doc.content,
         'public': doc.public
-    }
-    return documents[new_doc_id]
+    })
+    response.headers.append("Location", str(request.url) + "/" + str(result.inserted_id))
+    return {}
 
 
 @router.get(

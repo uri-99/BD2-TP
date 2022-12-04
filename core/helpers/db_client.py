@@ -1,11 +1,9 @@
 import pymongo
 import os
 from dotenv import load_dotenv
-from core.settings import Settings
+from core.settings import SingletonSettings
 
-settings = Settings()
-
-load_dotenv(settings.Config.env_file)
+load_dotenv(SingletonSettings.get_instance().Config.env_file)
 
 
 class MongoManager:
@@ -21,4 +19,4 @@ class MongoManager:
         if MongoManager.__instance is not None:
             raise Exception("This class is a singleton!")
         else:
-            MongoManager.__instance = pymongo.MongoClient(os.environ.get(settings.mongo_pass))
+            MongoManager.__instance = pymongo.MongoClient(os.environ.get(SingletonSettings.get_instance().mongo_pass))

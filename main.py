@@ -1,35 +1,37 @@
 from fastapi import FastAPI
-from v1.endpoints import users, documents, folders, favorites
-from core.settings import Settings
+from fastapi.security import OAuth2PasswordRequestForm
 
-settings = Settings()
+from core.auth.utils import *
+from v1.endpoints import users, documents, folders
 
 app = FastAPI(
-    title=settings.app_name,
-    description=settings.description,
+    title=SingletonSettings.get_instance().app_name,
+    description=SingletonSettings.get_instance().description,
     version="0.0.1"
 )
-
 
 app.include_router(users.router)
 app.include_router(documents.router)
 app.include_router(folders.router)
-app.include_router(favorites.router)
 
 app.openapi_tags = [
     users.tag_metadata,
     documents.tag_metadata,
-    folders.tag_metadata,
-    favorites.tag_metadata
+    folders.tag_metadata
 ]
 
-# load_dotenv(settings.Config.env_file)
 
-# DB Connection code example
-# client = MongoClient(os.environ.get(settings.mongo_pass))
-# BD2 = client.BD2
-# notes = BD2.File
-# users = BD2.User
-# print(notes.find_one())
-# print(users.find_one())
-# client.close()
+@app.post("/token", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user['_id']), "username": user['username']}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
