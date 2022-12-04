@@ -105,6 +105,10 @@ def create_document(doc: NewDocument, request: Request, response: Response):
     # if doc.createdBy not in users:
     #     raise HTTPException(status_code=400, detail='Creator user sent does not exist')
     # TODO : catch repeated random
+    editors = doc.editors
+    if doc.createdBy not in editors:
+        editors.append(doc.createdBy)
+
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     document = {
         # '_id': new_doc_id,
@@ -113,7 +117,7 @@ def create_document(doc: NewDocument, request: Request, response: Response):
         'lastEditedBy': doc.createdBy,
         'lastEdited': datetime.now(),
         'editors': [
-            doc.createdBy
+            editors
         ],
         'title': doc.title,
         'description': doc.description,
@@ -159,7 +163,9 @@ def get_document(id: str):
 def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response):
     editors = doc.editors
     if doc.lastEditedBy not in editors:
-        editors.append(doc.lastEditedBy)
+        editors.append(doc.lastEditedBy) #TODO : throw error if no access
+    # if doc.createdBy not in users:
+    #     raise HTTPException(status_code=400, detail='Creator user sent does not exist')
     newDoc = {
         'lastEditedBy': doc.lastEditedBy,
         'lastEdited': datetime.now(),
@@ -174,40 +180,8 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
     # print(resp)
     return {}
 
-
-# @router.get(
-#     "/{search}",
-#     # response_model=Document,
-#     status_code=status.HTTP_200_OK,
-#     responses={
-#         200: {'description': 'Found document'},
-#         404: {'description': 'Document not found for search query param'},
-#     }
-# )
-# def get_document(search: str):
-#     query_body = {
-#         "query": {
-#             "match": {
-#                 "some_field": "search_for_this"
-#             }
-#         }
-#     }
-#     print("\n-\n")
-#     try:
-#         resp = elastic.search(index="documents", query={"match_all": {}})
-#         #     # "fuzzy": {
-#         #     #     "user.id": {
-#         #     #         "value": "ki"
-#         #     #     }
-#         #     # }
-#         # }})
-#     except elasticsearch.NotFoundError:
-#         raise HTTPException(status_code=404, detail="Document id not found")
-#     print("\n\n\n\n")
-#     print(resp)
-#     print(resp['_source'])
-#     return resp['_source']
-
+from core.auth.models import LoggedUser
+from core.auth.utils import get_current_user
 
 @router.delete(
     "/{id}",
@@ -217,6 +191,13 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
         404: {'description': 'Document not found'}
     }
 )
-def delete_document(id: str):
-    resp = elastic.delete(index="documents", id=id)
-    return resp
+def delete_document(id: str):#, current_user: LoggedUser = Depends(get_current_user)):
+    try:
+        doc = elastic.get(index="documents", id=id)
+    except elasticsearch.NotFoundError:
+        raise HTTPException(status_code=404, detail="Document id not found")
+
+    print(doc.editors)
+
+    # resp = elastic.delete(index="documents", id=id)
+    return doc
