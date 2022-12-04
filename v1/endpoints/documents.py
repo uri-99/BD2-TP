@@ -8,7 +8,7 @@ from fastapi import Request, Response
 from . import *
 from core.helpers.db_client import ElasticManager
 elastic = ElasticManager.get_instance()
-# print(elastic.search(index="", query={"match_all": {}}))
+
 
 router = APIRouter(
     prefix="/documents",
@@ -51,7 +51,7 @@ documents = {
 
 @router.get(
     "",
-    response_model=List[Document],
+    # response_model=List[Document],
     status_code=status.HTTP_200_OK,
     responses={
         200: {'description': 'Found documents list'},
@@ -64,13 +64,16 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = None
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
     # vvv Dummy code vvv
-    doc_list = list(documents.values())
-    if title is not None:
-        doc_list = list(filter(lambda doc: doc['title'] == title, doc_list))
-    if author is not None:
-        doc_list = list(filter(lambda doc: doc['owner'] == author, doc_list))
-    return doc_list[(page - 1) * limit: page * limit]
-#return elastic.
+    # doc_list = list(documents.values())
+    # if title is not None:
+    #     doc_list = list(filter(lambda doc: doc['title'] == title, doc_list))
+    # if author is not None:
+    #     doc_list = list(filter(lambda doc: doc['owner'] == author, doc_list))
+    # return doc_list[(page - 1) * limit: page * limit]
+    resp = elastic.search(index="documents", query={"match_all": {}})
+    print(resp)
+    return resp["hits"]["hits"]
+
 
 
 @router.post(
