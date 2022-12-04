@@ -10,3 +10,4 @@ la de uvicorn
 passlib
 "python-jose[cryptography]"
 python-multipart
+bcrypt
