@@ -1,16 +1,12 @@
 from fastapi import FastAPI
 from fastapi.security import OAuth2PasswordRequestForm
 
-from core.auth.models import *
 from core.auth.utils import *
 from v1.endpoints import users, documents, folders
-from core.settings import Settings
-
-settings = Settings()
 
 app = FastAPI(
-    title=settings.app_name,
-    description=settings.description,
+    title=SingletonSettings.get_instance().app_name,
+    description=SingletonSettings.get_instance().description,
     version="0.0.1"
 )
 

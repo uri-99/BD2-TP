@@ -22,7 +22,7 @@ tag_metadata = {
         'description': 'Operations with users'
 }
 
-users_db = MongoManager.get_instance().BD2.LoggedUser
+users_db = MongoManager.get_instance().BD2.User
 documents_db = MongoManager.get_instance().BD2.File
 
 users_page_size = 10

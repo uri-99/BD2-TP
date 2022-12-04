@@ -13,7 +13,7 @@ tag_metadata = {
 
 folders_page_size = 10
 folders_db = MongoManager.get_instance().BD2.Folder
-users_db = MongoManager.get_instance().BD2.LoggedUser
+users_db = MongoManager.get_instance().BD2.User
 
 
 @router.get(
