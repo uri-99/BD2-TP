@@ -39,8 +39,3 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         data={"sub": str(user['_id']), "username": user['username']}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
-
-
-@app.get("/users/me/", response_model=LoggedUser)
-async def read_users_me(current_user: LoggedUser = Depends(get_current_user)):
-    return current_user
