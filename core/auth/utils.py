@@ -2,7 +2,7 @@ import os
 from datetime import timedelta, datetime
 
 from bson import ObjectId
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from core.helpers.db_client import MongoManager
 from core.auth.models import *

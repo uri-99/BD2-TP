@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import HttpUrl
 
 from .. import *
@@ -27,6 +29,7 @@ class NewDocument(BaseModel):
     editors: List[str]
     public: bool
 
+
 class UpdateDocument(BaseModel):
     lastEditedBy: str
     editors: List[str]
@@ -48,6 +51,8 @@ class Document(BaseModel):
 
 
 class Folder(BaseModel):
+    self: str
+    id: str
     content: List[str]
     createdBy: str
     createdOn: str            # Deberia ser una fecha
@@ -58,7 +63,17 @@ class Folder(BaseModel):
     description: str
 
 
-class NewFolder(BaseModel):
+class UpdateFolder(BaseModel):
+    editors: List[str]
     title: str
     description: str
     content: List[str]
+    public: bool
+
+
+
+class NewFolder(BaseModel):
+    title: str
+    description: str
+    content: Optional[List[str]]
+    public: Optional[bool]
