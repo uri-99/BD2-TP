@@ -5,6 +5,9 @@ import elasticsearch
 from datetime import datetime
 from fastapi import Request, Response
 
+from core.auth.models import LoggedUser
+from core.auth.utils import get_current_user
+
 from . import *
 from core.helpers.db_client import ElasticManager
 elastic = ElasticManager.get_instance()
@@ -180,8 +183,7 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
     # print(resp)
     return {}
 
-from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user
+
 
 @router.delete(
     "/{id}",
@@ -191,13 +193,14 @@ from core.auth.utils import get_current_user
         404: {'description': 'Document not found'}
     }
 )
-def delete_document(id: str):#, current_user: LoggedUser = Depends(get_current_user)):
+def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user)):
     try:
         doc = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-    print(doc.editors)
-
-    # resp = elastic.delete(index="documents", id=id)
+    print(doc["_source"]["editors"])
+    print(current_user.username)
+    if current_user.username in doc["_source"]["editors"]:
+        resp = elastic.delete(index="documents", id=id)
     return doc
