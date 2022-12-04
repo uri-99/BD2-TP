@@ -1,3 +1,9 @@
+import datetime
+
+from bson.errors import InvalidId
+
+from core.auth.models import LoggedUser
+from core.auth.utils import get_current_user
 from . import *
 
 router = APIRouter(
@@ -25,11 +31,12 @@ users_db = MongoManager.get_instance().BD2.User
         400: {'description': 'Sent wrong query param'}
     }
 )
-def get_folders(request: Request, response: Response, page: int = 1, title: Union[str, None] = None, author: Union[str, None] = None):
+def get_folders(request: Request, response: Response, page: int = 1,
+                title: Union[str, None] = None, author: Union[str, None] = None):
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
 
-    folder_filter = {}
+    folder_filter = {'public': 'false'}
     if title is not None:
         folder_filter["title"] = title
     if author is not None:
@@ -67,20 +74,21 @@ def get_folders(request: Request, response: Response, page: int = 1, title: Unio
         400: {'description': 'Sent wrong param'}
     }
 )
-def create_folder(doc: NewFolder, request: Request, response: Response):
+def create_folder(doc: NewFolder, request: Request, response: Response,
+                  current_user: LoggedUser = Depends(get_current_user)):
     now = datetime.datetime.now()
     result = folders_db.insert_one({
-        'createdBy': doc.createdBy,
+        'createdBy': current_user.id,
         'createdOn': now,
-        'lastEditedBy': '',
-        'lastEdited': '',
+        'lastEditedBy': current_user.id,
+        'lastEdited': now,
         'editors': [
-            doc.createdBy
+            current_user.id
         ],
         'title': doc.title,
         'description': doc.description,
         'content': doc.content,
-        'public': doc.public
+        'public': doc.public if doc.public is not None else 'true'
     })
     response.headers.append("Location", str(request.url) + "/" + str(result.inserted_id))
     return {}
@@ -91,14 +99,29 @@ def create_folder(doc: NewFolder, request: Request, response: Response):
     response_model=Folder,
     status_code=status.HTTP_200_OK,
     responses={
-        200: {'description': 'Found document'},
-        404: {'description': 'Document not found for id sent'},
+        200: {'description': 'Found folder'},
+        404: {'description': 'Folder not found for id sent'},
     }
 )
-def get_folder(id: int):
-    if id not in documents:
-        raise HTTPException(status_code=404, detail="Document not found")
-    return documents[id]
+def get_folder(id: str, request: Request):
+    try:
+        folder = folders_db.find_one({'_id': ObjectId(id)}, {'public': 0})
+    except InvalidId:
+        raise HTTPException(status_code=404, detail='Folder not found')
+    if folder is None:
+        raise HTTPException(status_code=404, detail='Folder not found')
+    return Folder(
+        self=str(request.url),
+        id=str(folder['_id']),
+        createdBy=str(folder['createdBy']),
+        lastEditedBy=str(folder['lastEditedBy']),
+        createdOn=str(folder['createdOn']),
+        lastEdited=str(folder['lastEdited']),
+        title=folder['title'],
+        description=folder['description'],
+        content=oidlist_to_str(folder['content']),
+        editors=oidlist_to_str(folder['editors'])
+    )
 
 
 @router.put(
@@ -109,8 +132,9 @@ def get_folder(id: int):
         404: {'description': 'Document not found'}
     }
 )
-def modify_folder(id: int):
-    return {"Hello": "World"}
+def modify_folder(id: str, current_user: LoggedUser = Depends(get_current_user)):
+    # TODO: Chequeo de que el current user tenga permisos
+    return {}
 
 
 @router.delete(
@@ -121,5 +145,6 @@ def modify_folder(id: int):
         404: {'description': 'Document not found'}
     }
 )
-def delete_folder(id: int):
-    return {"Hello": "World"}
+def delete_folder(id: str, current_user: LoggedUser = Depends(get_current_user)):
+    # TODO: Chequeo de que el current user tenga permisos
+    return {}
