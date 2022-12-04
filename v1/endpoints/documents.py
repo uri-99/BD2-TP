@@ -1,9 +1,12 @@
+import binascii
+import os
+
 import elasticsearch
 from datetime import datetime
 from fastapi import Request, Response
 
 from . import *
-from core.db_client import ElasticManager
+from core.helpers.db_client import ElasticManager
 elastic = ElasticManager.get_instance()
 # print(elastic.search(index="", query={"match_all": {}}))
 
@@ -80,11 +83,12 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = None
 def create_document(doc: NewDocument, request: Request, response: Response):
     # if doc.createdBy not in users:
     #     raise HTTPException(status_code=400, detail='Creator user sent does not exist')
+    # TODO : catch repeated random
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     document = {
         # '_id': new_doc_id,
         'createdBy': doc.createdBy,
-        'created': datetime.now(),
+        'createdOn': datetime.now(),
         'lastEditedBy': doc.createdBy,
         'lastEdited': datetime.now(),
         'editors': [
