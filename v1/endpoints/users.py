@@ -1,12 +1,15 @@
 import json
+from typing import List, Union
 
-import bson.errors
+import bson
 from bson import json_util, ObjectId
-from fastapi import Request, Response
+from fastapi import APIRouter, status, Request, Response, HTTPException, Depends
 
+from core.auth.models import LoggedUser
+from core.auth.utils import get_current_user
 from core.helpers.converters import oidlist_to_str
-from . import *
-from core.db_client import MongoManager
+from core.helpers.db_client import MongoManager
+from core.schemas.schema import *
 
 router = APIRouter(
     prefix="/users",
@@ -19,11 +22,12 @@ tag_metadata = {
         'description': 'Operations with users'
 }
 
-users_db = MongoManager.get_instance().BD2.User
+users_db = MongoManager.get_instance().BD2.LoggedUser
 documents_db = MongoManager.get_instance().BD2.File
 
 users_page_size = 10
 document_page_size = 10
+
 
 @router.get(
     "",
@@ -117,11 +121,14 @@ def get_user(id: str, request: Request):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Deleted user'},
+        403: {'description': 'Tried to delete other user account'},
         404: {'description': 'User not found for id sent'},
     },
     tags=['users']
 )
-def delete_user(id: str):
+def delete_user(id: str, current_user: LoggedUser = Depends(get_current_user)):
+    if id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cant delete other users accounts")
     try:
         user_id = ObjectId(id)
     except bson.errors.InvalidId:
@@ -139,13 +146,17 @@ def delete_user(id: str):
     status_code=status.HTTP_200_OK,
     responses={
         200: {'description': 'Found user favorites list'},
-        400: {'description': 'Sent wrong query param'}
+        400: {'description': 'Sent wrong query param'},
+        403: {'description': 'Tried to access other user favorite list'},
+        404: {'description': 'User not found'}
     }
 )
-def get_favorites(request: Request, response: Response, id: str, page: int = 1):
+def get_favorites(request: Request, response: Response, id: str, page: int = 1,
+                  current_user: LoggedUser = Depends(get_current_user)):
+    if id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cant access favorites list of other users")
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
-    # vvv Dummy code vvv
     favorites_oidlist = users_db.find_one({"_id": ObjectId(id)}, {"favorites": 1, "_id": 0})['favorites']
     favorite_docs = documents_db.find({"_id": {"$in": favorites_oidlist}})\
         .skip((page - 1) * document_page_size).limit(document_page_size)
@@ -174,10 +185,13 @@ def get_favorites(request: Request, response: Response, id: str, page: int = 1):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Added document to user favorites'},
+        403: {'description': 'Tried to access other user favorite list'},
         404: {'description': 'Document/User not found'}
     }
 )
-def add_favorite(id: str, doc_id: str):
+def add_favorite(id: str, doc_id: str, current_user: LoggedUser = Depends(get_current_user)):
+    if id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cant add favorites to other user list")
     try:
         if documents_db.find_one({"_id": ObjectId(doc_id)}) is None:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -195,10 +209,13 @@ def add_favorite(id: str, doc_id: str):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Removed document from user favorites'},
+        403: {'description': 'Tried to access other user favorite list'},
         404: {'description': 'Document/User not found'}
     }
 )
-def remove_favorite(id: str, doc_id: str):
+def remove_favorite(id: str, doc_id: str, current_user: LoggedUser = Depends(get_current_user)):
+    if id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cant remove favorite from other user list")
     try:
         if documents_db.find_one({"_id": ObjectId(doc_id)}) is None:
             raise HTTPException(status_code=404, detail="Document not found")

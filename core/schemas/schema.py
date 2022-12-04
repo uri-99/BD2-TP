@@ -42,7 +42,7 @@ class Document(BaseModel):
 class Folder(BaseModel):
     content: List[str]
     createdBy: str
-    created: str            # Deberia ser una fecha
+    createdOn: str            # Deberia ser una fecha
     lastEditedBy: str
     lastEdited: str         # Deberia ser una fecha
     editors: List[str]
@@ -51,11 +51,6 @@ class Folder(BaseModel):
 
 
 class NewFolder(BaseModel):
-    createdBy: str
-    created: str            # Deberia ser una fecha
-    lastEditedBy: str
-    lastEdited: str         # Deberia ser una fecha
-    editors: List[str]
     title: str
     description: str
     content: List[str]
