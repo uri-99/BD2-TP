@@ -166,4 +166,5 @@ def modify_document(id: int, doc: UpdateDocument, request: Request, response: Re
     }
 )
 def delete_document(id: int):
-    return {"Hello": "World"}
+    resp = elastic.delete(index="documents", id=id)
+    return resp
