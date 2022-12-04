@@ -59,6 +59,7 @@ documents = {
     }
 )
 def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = None, author: Union[str, None] = None):
+
     if limit < 0:
         raise HTTPException(status_code=400, detail='Page size must be higher than zero')
     if page < 1:
@@ -70,7 +71,20 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = None
     # if author is not None:
     #     doc_list = list(filter(lambda doc: doc['owner'] == author, doc_list))
     # return doc_list[(page - 1) * limit: page * limit]
-    resp = elastic.search(index="documents", query={"match_all": {}})
+    print(title)
+    resp = elastic.search(index="documents", query={
+        "bool": {
+            "should": [
+                {"fuzzy": {"title": title}},
+                {"fuzzy": {"createdBy": author}} #TODO : esto requiere que se le pase este parametro
+            ],
+            "filter": [
+                {"term": {
+                    "public": "true"
+                }}
+            ]
+        }
+    })
     print(resp)
     return resp["hits"]["hits"]
 
@@ -155,6 +169,40 @@ def modify_document(id: int, doc: UpdateDocument, request: Request, response: Re
     response.headers.append("Location", request.url._url)
     # print(resp)
     return {}
+
+
+# @router.get(
+#     "/{search}",
+#     # response_model=Document,
+#     status_code=status.HTTP_200_OK,
+#     responses={
+#         200: {'description': 'Found document'},
+#         404: {'description': 'Document not found for search query param'},
+#     }
+# )
+# def get_document(search: str):
+#     query_body = {
+#         "query": {
+#             "match": {
+#                 "some_field": "search_for_this"
+#             }
+#         }
+#     }
+#     print("\n-\n")
+#     try:
+#         resp = elastic.search(index="documents", query={"match_all": {}})
+#         #     # "fuzzy": {
+#         #     #     "user.id": {
+#         #     #         "value": "ki"
+#         #     #     }
+#         #     # }
+#         # }})
+#     except elasticsearch.NotFoundError:
+#         raise HTTPException(status_code=404, detail="Document id not found")
+#     print("\n\n\n\n")
+#     print(resp)
+#     print(resp['_source'])
+#     return resp['_source']
 
 
 @router.delete(
