@@ -8,7 +8,7 @@ from fastapi import Request, Response
 from . import *
 from core.helpers.db_client import ElasticManager
 elastic = ElasticManager.get_instance()
-# print(elastic.search(index="", query={"match_all": {}}))
+
 
 router = APIRouter(
     prefix="/documents",
@@ -51,26 +51,47 @@ documents = {
 
 @router.get(
     "",
-    response_model=List[Document],
+    # response_model=List[Document],
     status_code=status.HTTP_200_OK,
     responses={
         200: {'description': 'Found documents list'},
         400: {'description': 'Sent wrong query param'}
     }
 )
-def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = None, author: Union[str, None] = None):
+def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = ""):
+    wildContent = "*" + content + "*"
+    wildTitle = "*" + title + "*"
+    wildDescription = "*" + description + "*"
     if limit < 0:
         raise HTTPException(status_code=400, detail='Page size must be higher than zero')
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
     # vvv Dummy code vvv
-    doc_list = list(documents.values())
-    if title is not None:
-        doc_list = list(filter(lambda doc: doc['title'] == title, doc_list))
-    if author is not None:
-        doc_list = list(filter(lambda doc: doc['owner'] == author, doc_list))
-    return doc_list[(page - 1) * limit: page * limit]
-#return elastic.
+    # doc_list = list(documents.values())
+    # if title is not None:
+    #     doc_list = list(filter(lambda doc: doc['title'] == title, doc_list))
+    # if author is not None:
+    #     doc_list = list(filter(lambda doc: doc['owner'] == author, doc_list))
+    # return doc_list[(page - 1) * limit: page * limit]
+    print(title)
+    resp = elastic.search(index="documents", query={"bool": {
+      "should": [
+        { "fuzzy": {"title": title}},
+        { "fuzzy": {"createdBy": author}},
+        { "fuzzy": {"description": description}},
+        { "wildcard": {"title": {"value": wildTitle}}},
+        { "wildcard": {"description": {"value": wildDescription}}},
+        { "wildcard" : {"content": {"value": wildContent}}}
+      ],
+      "filter": [
+        {"term": {
+          "public": "true"
+        }}
+      ]
+    }})
+    print(resp)
+    return resp["hits"]["hits"]
+
 
 
 @router.post(
@@ -84,6 +105,10 @@ def create_document(doc: NewDocument, request: Request, response: Response):
     # if doc.createdBy not in users:
     #     raise HTTPException(status_code=400, detail='Creator user sent does not exist')
     # TODO : catch repeated random
+    editors = doc.editors
+    if doc.createdBy not in editors:
+        editors.append(doc.createdBy)
+
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     document = {
         # '_id': new_doc_id,
@@ -92,7 +117,7 @@ def create_document(doc: NewDocument, request: Request, response: Response):
         'lastEditedBy': doc.createdBy,
         'lastEdited': datetime.now(),
         'editors': [
-            doc.createdBy
+            editors
         ],
         'title': doc.title,
         'description': doc.description,
@@ -115,7 +140,7 @@ def create_document(doc: NewDocument, request: Request, response: Response):
         404: {'description': 'Document not found for id sent'},
     }
 )
-def get_document(id: int):
+def get_document(id: str):
     # TODO : no permitir gets sin permiso
     try:
         resp = elastic.get(index="documents", id=id)
@@ -135,10 +160,12 @@ def get_document(id: int):
         404: {'description': 'Document not found'}
     }
 )
-def modify_document(id: int, doc: UpdateDocument, request: Request, response: Response):
+def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response):
     editors = doc.editors
     if doc.lastEditedBy not in editors:
-        editors.append(doc.lastEditedBy)
+        editors.append(doc.lastEditedBy) #TODO : throw error if no access
+    # if doc.createdBy not in users:
+    #     raise HTTPException(status_code=400, detail='Creator user sent does not exist')
     newDoc = {
         'lastEditedBy': doc.lastEditedBy,
         'lastEdited': datetime.now(),
@@ -153,6 +180,8 @@ def modify_document(id: int, doc: UpdateDocument, request: Request, response: Re
     # print(resp)
     return {}
 
+from core.auth.models import LoggedUser
+from core.auth.utils import get_current_user
 
 @router.delete(
     "/{id}",
@@ -162,5 +191,13 @@ def modify_document(id: int, doc: UpdateDocument, request: Request, response: Re
         404: {'description': 'Document not found'}
     }
 )
-def delete_document(id: int):
-    return {"Hello": "World"}
+def delete_document(id: str):#, current_user: LoggedUser = Depends(get_current_user)):
+    try:
+        doc = elastic.get(index="documents", id=id)
+    except elasticsearch.NotFoundError:
+        raise HTTPException(status_code=404, detail="Document id not found")
+
+    print(doc.editors)
+
+    # resp = elastic.delete(index="documents", id=id)
+    return doc
