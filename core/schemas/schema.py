@@ -27,6 +27,14 @@ class NewDocument(BaseModel):
     editors: List[str]
     public: bool
 
+class UpdateDocument(BaseModel):
+    lastEditedBy: str
+    editors: List[str]
+    title: str
+    description: str
+    content: List[str]
+    public: bool
+
 
 class Document(BaseModel):
     createdBy: str

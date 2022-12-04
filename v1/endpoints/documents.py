@@ -1,4 +1,11 @@
+import elasticsearch
+from datetime import datetime
+from fastapi import Request, Response
+
 from . import *
+from core.db_client import ElasticManager
+elastic = ElasticManager.get_instance()
+# print(elastic.search(index="", query={"match_all": {}}))
 
 router = APIRouter(
     prefix="/documents",
@@ -60,26 +67,26 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = None
     if author is not None:
         doc_list = list(filter(lambda doc: doc['owner'] == author, doc_list))
     return doc_list[(page - 1) * limit: page * limit]
+#return elastic.
 
 
 @router.post(
     "",
-    response_model=Document,
     status_code=status.HTTP_201_CREATED,
     responses={
         201: {'description': 'Document successfully created'}
     }
 )
-def create_document(doc: NewDocument):
-    if doc.createdBy not in users:
-        raise HTTPException(status_code=400, detail='Creator user sent does not exist')
+def create_document(doc: NewDocument, request: Request, response: Response):
+    # if doc.createdBy not in users:
+    #     raise HTTPException(status_code=400, detail='Creator user sent does not exist')
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
-    documents[new_doc_id] = {
-        '_id': new_doc_id,
+    document = {
+        # '_id': new_doc_id,
         'createdBy': doc.createdBy,
-        'created': 'ISODate("2022-11-15T19:51:36Z")',
-        'lastEditedBy': '',
-        'lastEdited': '',
+        'created': datetime.now(),
+        'lastEditedBy': doc.createdBy,
+        'lastEdited': datetime.now(),
         'editors': [
             doc.createdBy
         ],
@@ -88,7 +95,11 @@ def create_document(doc: NewDocument):
         'content': doc.content,
         'public': doc.public
     }
-    return documents[new_doc_id]
+    resp = elastic.index(index="documents", id=new_doc_id, document=document)
+    # print('\n\n')
+    # print(resp)
+    response.headers.append("Location", request.url._url + "/" + resp['_id'])
+    return {}
 
 
 @router.get(
@@ -101,9 +112,15 @@ def create_document(doc: NewDocument):
     }
 )
 def get_document(id: int):
-    if id not in documents:
-        raise HTTPException(status_code=404, detail="Document not found")
-    return documents[id]
+    # TODO : no permitir gets sin permiso
+    try:
+        resp = elastic.get(index="documents", id=id)
+    except elasticsearch.NotFoundError:
+        raise HTTPException(status_code=404, detail="Document id not found")
+    print("\n\n")
+    print(resp)
+    print(resp['_source'])
+    return resp['_source']
 
 
 @router.put(
@@ -114,8 +131,23 @@ def get_document(id: int):
         404: {'description': 'Document not found'}
     }
 )
-def modify_document(id: int):
-    return {"Hello": "World"}
+def modify_document(id: int, doc: UpdateDocument, request: Request, response: Response):
+    editors = doc.editors
+    if doc.lastEditedBy not in editors:
+        editors.append(doc.lastEditedBy)
+    newDoc = {
+        'lastEditedBy': doc.lastEditedBy,
+        'lastEdited': datetime.now(),
+        'editors': editors,
+        'title': doc.title,
+        'description': doc.description,
+        'content': doc.content,
+        'public': doc.public
+    }
+    resp = elastic.update(index="documents", id=id, doc=newDoc)
+    response.headers.append("Location", request.url._url)
+    # print(resp)
+    return {}
 
 
 @router.delete(
