@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     mongo_pass = "MONGODB_PASS"
     jwt_key = "JWT_KEY"
 
+    elastic_user = "elastic"
+    elastic_password = "Z2FQDZpR8flTzHPK4xhCP3s6"
+    elastic_class_id = "Elastic_Notilokos:c291dGhhbWVyaWNhLWVhc3QxLmdjcC5lbGFzdGljLWNsb3VkLmNvbTo0NDMkMzg5NTI3YWE0MGMyNGE4N2JjZDdhNzM5MzliZDlmYWYkNzc5MGVjNmYxMmVjNDhmNTk3MDI3YWZiZjcwZWNhNmM="
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
