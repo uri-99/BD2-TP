@@ -104,37 +104,32 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", 
         201: {'description': 'Document successfully created'}
     }
 )
-def create_document(doc: NewDocument, request: Request, response: Response):
-    # if doc.createdBy not in users:
-    #     raise HTTPException(status_code=400, detail='Creator user sent does not exist')
+def create_document(doc: NewDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
+
     # TODO : catch repeated random
     editors = doc.editors
-    if doc.createdBy not in editors:
-        editors.append(doc.createdBy)
+    if current_user.username not in editors:
+        editors.append(current_user.username)
 
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     document = {
         # '_id': new_doc_id,
-        'createdBy': doc.createdBy,
+        'createdBy': current_user.username,
         'createdOn': datetime.now(),
-        'lastEditedBy': doc.createdBy,
+        'lastEditedBy': current_user.username,
         'lastEdited': datetime.now(),
-        'editors': [
-            editors
-        ],
+        'editors': editors,
         'title': doc.title,
         'description': doc.description,
         'content': doc.content,
         'public': doc.public
     }
     resp = elastic.index(index="documents", id=new_doc_id, document=document)
-    # print('\n\n')
-    # print(resp)
     response.headers.append("Location", request.url._url + "/" + resp['_id'])
     return {}
 
 
-@router.get(
+@router.get( #TODO : fix error, not working wtf
     "/{id}",
     response_model=Document,
     status_code=status.HTTP_200_OK,
@@ -145,14 +140,16 @@ def create_document(doc: NewDocument, request: Request, response: Response):
 )
 def get_document(id: str):
     # TODO : no permitir gets sin permiso
+    print("\n-----------\n")
     try:
         resp = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
+
     print("\n\n")
-    print(resp)
     print(resp['_source'])
-    return resp['_source']
+    ret = resp['_source']
+    return ret
 
 
 @router.put(
@@ -160,17 +157,28 @@ def get_document(id: str):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Modified document'},
-        404: {'description': 'Document not found'}
+        404: {'description': 'Document not found'},
+        403: {'description': 'User has no access to this document'}
     }
 )
-def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response):
+def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
+    try:
+        elastic_doc = elastic.get(index="documents", id=id)
+    except elasticsearch.NotFoundError:
+        raise HTTPException(status_code=404, detail="Document id not found")
+
+
+    if current_user.username not in elastic_doc["_source"]["editors"]:
+        print(current_user.username)
+        print("no access")
+        raise HTTPException(status_code=403, detail="User has no access to this document")
+
     editors = doc.editors
-    if doc.lastEditedBy not in editors:
-        editors.append(doc.lastEditedBy) #TODO : throw error if no access
-    # if doc.createdBy not in users:
-    #     raise HTTPException(status_code=400, detail='Creator user sent does not exist')
+    if elastic_doc["_source"]["createdBy"] not in editors:
+        editors.append(elastic_doc["_source"]["createdBy"])
+
     newDoc = {
-        'lastEditedBy': doc.lastEditedBy,
+        'lastEditedBy': current_user.username,
         'lastEdited': datetime.now(),
         'editors': editors,
         'title': doc.title,
@@ -203,4 +211,5 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
     print(current_user.username)
     if current_user.username in doc["_source"]["editors"]:
         resp = elastic.delete(index="documents", id=id)
+        #TODO : else reply no auth
     return doc

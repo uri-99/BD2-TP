@@ -24,14 +24,12 @@ class NewDocument(BaseModel):
     title: str
     description: str
     content: List[str]
-    createdBy: str
     parentFolder: str
     editors: List[str]
     public: bool
 
 
 class UpdateDocument(BaseModel):
-    lastEditedBy: str
     editors: List[str]
     title: str
     description: str
