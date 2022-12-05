@@ -78,14 +78,14 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", 
         { "wildcard": {"title": {"value": wildTitle}}},
         { "wildcard": {"description": {"value": wildDescription}}},
         { "wildcard" : {"content": {"value": wildContent}}}
-      ],
-      "filter": [
-        {"term": {
-          "public": "true"
-        }}
-      ]
+      ]#,
+      # "filter": [
+      #   {"term": {
+      #     # "public": "true" #TODO : make mega
+      #   }}
+      # ]
     }})
-    print(resp)
+    # print(resp)
     return resp["hits"]["hits"]
 
 
@@ -98,7 +98,6 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", 
     }
 )
 def create_document(doc: NewDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
-
     # TODO : catch repeated random
     editors = doc.editors
     if current_user.username not in editors:
@@ -112,10 +111,10 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
         'lastEditedBy': current_user.username,
         'lastEdited': datetime.now(),
         'editors': editors,
+        'readers': doc.readers,
         'title': doc.title,
         'description': doc.description,
         'content': doc.content,
-        'public': doc.public
     }
     resp = elastic.index(index="documents", id=new_doc_id, document=document)
     response.headers.append("Location", request.url._url + "/" + resp['_id'])
@@ -131,24 +130,37 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
         404: {'description': 'Document not found for id sent'},
     }
 )
-async def get_document(id: str, request: Request, response: Response, authorization: Union[List[str], None] = Header(default=None)):
+async def get_document(id: str, current_user: LoggedUser = Depends(get_current_user)):
+    # , current_user: LoggedUser = Depends(get_current_user)
+    # , authorization: Union[List[str], None] = Header(default=None)
+    print("in here")
+    print(current_user)
     try:
         elastic_doc = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-    if "*" in elastic_doc["_source"]["editors"]: #TODO : use new doc format with readers+writers
+    # authorization = "Bearer temporalInvalidToken"
+
+    if "*" in elastic_doc["_source"]["readers"]: #TODO : use new doc format with readers+writers
+        print("in here2")
         return elastic_doc["_source"]
     else: #doc is not open to read
-        if authorization is None:
+        print("in here3")
+        if current_user is None:
+            print("in here4")
             raise HTTPException(status_code=403, detail="User has no access to this document")
         else:
-            token = authorization[0][7:] #remove "Bearer "
-            user = await get_current_user(token)
-            if user.username not in elastic_doc["_source"]["editors"]: #TODO : use new doc format with readers+writers
-                raise HTTPException(status_code=403, detail="User has no access to this document")
-            else:
+            print("in here5")
+            # token = authorization[0][7:] #remove "Bearer "
+            # user = await get_current_user(token)
+            print("\n----------\n")
+            print(current_user.username)
+            print("\n----------\n")
+            if current_user.username in elastic_doc["_source"]["editors"]: #TODO : use new doc format with readers+writers
                 return elastic_doc["_source"]
+            else:
+                raise HTTPException(status_code=403, detail="User has no access to this document")
 
 
 @router.put(
@@ -180,7 +192,6 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
         'title': doc.title,
         'description': doc.description,
         'content': doc.content,
-        'public': doc.public
     }
     resp = elastic.update(index="documents", id=id, doc=newDoc)
     response.headers.append("Location", request.url._url)
