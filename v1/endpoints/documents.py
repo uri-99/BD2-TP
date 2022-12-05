@@ -69,13 +69,6 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", 
         raise HTTPException(status_code=400, detail='Page size must be higher than zero')
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
-    # vvv Dummy code vvv
-    # doc_list = list(documents.values())
-    # if title is not None:
-    #     doc_list = list(filter(lambda doc: doc['title'] == title, doc_list))
-    # if author is not None:
-    #     doc_list = list(filter(lambda doc: doc['owner'] == author, doc_list))
-    # return doc_list[(page - 1) * limit: page * limit]
     print(title)
     resp = elastic.search(index="documents", query={"bool": {
       "should": [
@@ -212,7 +205,8 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
 
     print(doc["_source"]["editors"])
     print(current_user.username)
-    if current_user.username == doc["_source"]["createdBy"]: #TODO check
+    if current_user.username == doc["_source"]["createdBy"]:
         resp = elastic.delete(index="documents", id=id)
-        #TODO : else reply no auth
-    return doc
+    else:
+        raise HTTPException(status_code=403, detail="User has no permission to delete this document")
+    return {}
