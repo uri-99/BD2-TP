@@ -3,7 +3,7 @@ import os
 
 import elasticsearch
 from datetime import datetime
-from fastapi import Request, Response
+from fastapi import Request, Response, Header
 
 from core.auth.models import LoggedUser
 from core.auth.utils import get_current_user
@@ -129,7 +129,7 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
     return {}
 
 
-@router.get( #TODO : fix error, not working wtf
+@router.get(
     "/{id}",
     response_model=Document,
     status_code=status.HTTP_200_OK,
@@ -138,18 +138,24 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
         404: {'description': 'Document not found for id sent'},
     }
 )
-def get_document(id: str):
-    # TODO : no permitir gets sin permiso
-    print("\n-----------\n")
+async def get_document(id: str, request: Request, response: Response, authorization: Union[List[str], None] = Header(default=None)):
     try:
-        resp = elastic.get(index="documents", id=id)
+        elastic_doc = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-    print("\n\n")
-    print(resp['_source'])
-    ret = resp['_source']
-    return ret
+    if "*" in elastic_doc["_source"]["editors"]: #TODO : use new doc format with readers+writers
+        return elastic_doc["_source"]
+    else: #doc is not open to read
+        if authorization is None:
+            raise HTTPException(status_code=403, detail="User has no access to this document")
+        else:
+            token = authorization[0][7:] #remove "Bearer "
+            user = await get_current_user(token)
+            if user.username not in elastic_doc["_source"]["editors"]: #TODO : use new doc format with readers+writers
+                raise HTTPException(status_code=403, detail="User has no access to this document")
+            else:
+                return elastic_doc["_source"]
 
 
 @router.put(
@@ -167,10 +173,7 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-
     if current_user.username not in elastic_doc["_source"]["editors"]:
-        print(current_user.username)
-        print("no access")
         raise HTTPException(status_code=403, detail="User has no access to this document")
 
     editors = doc.editors
@@ -209,7 +212,7 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
 
     print(doc["_source"]["editors"])
     print(current_user.username)
-    if current_user.username in doc["_source"]["editors"]:
+    if current_user.username == doc["_source"]["createdBy"]: #TODO check
         resp = elastic.delete(index="documents", id=id)
         #TODO : else reply no auth
     return doc
