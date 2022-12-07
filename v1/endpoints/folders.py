@@ -3,7 +3,7 @@ import datetime
 from bson.errors import InvalidId
 
 from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user, user_has_permission
+from core.auth.utils import get_current_user, user_has_permission, verify_logged_in
 from core.helpers.converters import get_parsed_folder
 from . import *
 
@@ -80,8 +80,7 @@ def get_folders(request: Request, response: Response, page: int = 1,
 )
 def create_folder(doc: NewFolder, request: Request, response: Response,
                   current_user: LoggedUser = Depends(get_current_user)):
-    if current_user is None:
-        raise HTTPException(status_code=401, detail="User must be logged in to create a folder")
+    verify_logged_in(current_user)
     now = datetime.datetime.now()
     result = folders_db.insert_one({
         'createdBy': current_user.id,

@@ -6,7 +6,7 @@ from bson import json_util, ObjectId
 from fastapi import APIRouter, status, Request, Response, HTTPException, Depends
 
 from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user, get_password_hash
+from core.auth.utils import get_current_user, get_password_hash, verify_logged_in
 from core.helpers.converters import oidlist_to_str
 from core.helpers.db_client import MongoManager
 from core.schemas.schema import *
@@ -131,8 +131,7 @@ def get_user(id: str, request: Request):
     tags=['users']
 )
 def delete_user(id: str, current_user: LoggedUser = Depends(get_current_user)):
-    if current_user is None:
-        raise HTTPException(status_code=401, detail="User must be logged in to delete its account")
+    verify_logged_in(current_user)
     if id != current_user.id:
         raise HTTPException(status_code=403, detail="Cant delete other users accounts")
     try:
@@ -159,8 +158,7 @@ def delete_user(id: str, current_user: LoggedUser = Depends(get_current_user)):
 )
 def get_favorites(request: Request, response: Response, id: str, page: int = 1,
                   current_user: LoggedUser = Depends(get_current_user)):
-    if current_user is None:
-        raise HTTPException(status_code=401, detail="User must be logged in to get its favorites")
+    verify_logged_in(current_user)
     if id != current_user.id:
         raise HTTPException(status_code=403, detail="Cant access favorites list of other users")
     if page < 1:
@@ -198,8 +196,7 @@ def get_favorites(request: Request, response: Response, id: str, page: int = 1,
     }
 )
 def add_favorite(id: str, doc_id: str, current_user: LoggedUser = Depends(get_current_user)):
-    if current_user is None:
-        raise HTTPException(status_code=401, detail="User must be logged in to add a favorite")
+    verify_logged_in(current_user)
     if id != current_user.id:
         raise HTTPException(status_code=403, detail="Cant add favorites to other user list")
     try:
@@ -224,8 +221,7 @@ def add_favorite(id: str, doc_id: str, current_user: LoggedUser = Depends(get_cu
     }
 )
 def remove_favorite(id: str, doc_id: str, current_user: LoggedUser = Depends(get_current_user)):
-    if current_user is None:
-        raise HTTPException(status_code=401, detail="User must be logged in to remove a favorite")
+    verify_logged_in(current_user)
     if id != current_user.id:
         raise HTTPException(status_code=403, detail="Cant remove favorite from other user list")
     try:
