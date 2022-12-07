@@ -62,7 +62,6 @@ tag_metadata = {
     }
 )
 def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = "", current_user: LoggedUser = Depends(get_current_user)):
-    # TODO: NO ESTÁ ANDANDO
     wildContent = "*" + content + "*"
     wildTitle = "*" + title + "*"
     wildDescription = "*" + description + "*"
@@ -125,7 +124,16 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
     if current_user.username not in writers:
         writers.append(current_user.username)
 
-    new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')     # TODO : catch repeated random
+    new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
+    validId = False
+    while not validId:
+        try:
+            elastic.get(index="documents", id=new_doc_id)
+        except elasticsearch.NotFoundError:
+            validId = True
+        else:
+            new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
+
     document = {
         'createdBy': current_user.username,
         'createdOn': datetime.now(),
