@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import Request, Response, Header
 
 from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user
+from core.auth.utils import get_current_user, verify_logged_in
 
 from . import *
 from core.helpers.db_client import ElasticManager
@@ -88,16 +88,18 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", 
     # print(resp)
     return resp["hits"]["hits"]
 
-
-
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
     responses={
-        201: {'description': 'Document successfully created'}
+        201: {'description': 'Document successfully created'},
+        401: {'description': 'User must be logged in'}
     }
 )
 def create_document(doc: NewDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
+    verify_logged_in(current_user)
+    # if current_user is None:
+    #     raise HTTPException(status_code=401, detail="User must be logged in")
     # TODO : catch repeated random
     editors = doc.editors
     if current_user.username not in editors:
@@ -131,32 +133,17 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
     }
 )
 async def get_document(id: str, current_user: LoggedUser = Depends(get_current_user)):
-    # , current_user: LoggedUser = Depends(get_current_user)
-    # , authorization: Union[List[str], None] = Header(default=None)
-    print("in here")
-    print(current_user)
     try:
         elastic_doc = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-    # authorization = "Bearer temporalInvalidToken"
-
-    if "*" in elastic_doc["_source"]["readers"] or "*" in elastic_doc["_source"]["editors"]: #TODO : use new doc format with readers+writers
-        print("in here2")
+    if "*" in elastic_doc["_source"]["readers"]:
         return elastic_doc["_source"]
     else: #doc is not open to read
-        print("in here3")
         if current_user is None:
-            print("in here4")
             raise HTTPException(status_code=403, detail="User has no access to this document")
         else:
-            print("in here5")
-            # token = authorization[0][7:] #remove "Bearer "
-            # user = await get_current_user(token)
-            print("\n----------\n")
-            print(current_user.username)
-            print("\n----------\n")
             if current_user.username in elastic_doc["_source"]["editors"]: #TODO : use new doc format with readers+writers
                 return elastic_doc["_source"]
             else:
@@ -173,6 +160,7 @@ async def get_document(id: str, current_user: LoggedUser = Depends(get_current_u
     }
 )
 def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
+    verify_logged_in(current_user)
     try:
         elastic_doc = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
@@ -209,6 +197,7 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
     }
 )
 def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user)):
+    verify_logged_in(current_user)
     try:
         doc = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
