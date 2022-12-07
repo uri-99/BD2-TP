@@ -3,13 +3,17 @@ import datetime
 from bson.errors import InvalidId
 
 from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user
+from core.auth.utils import get_current_user, user_has_permission
+from core.helpers.converters import get_parsed_folder
 from . import *
 
 router = APIRouter(
     prefix="/folders",
     tags=["folders"],
-    responses={404: {"description": "Folder not found"}}
+    responses={
+        401: {'description': 'User must be logged in to perform this action'},
+        404: {"description": "Folder not found"}
+    }
 )
 
 tag_metadata = {
@@ -36,7 +40,7 @@ def get_folders(request: Request, response: Response, page: int = 1,
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
 
-    folder_filter = {'public': 'false'}
+    folder_filter = {}
     if title is not None:
         folder_filter["title"] = title
     if author is not None:
@@ -44,7 +48,7 @@ def get_folders(request: Request, response: Response, page: int = 1,
             folder_filter["author"] = ObjectId(author)
         except bson.errors.InvalidId:
             return []
-    result = folders_db.find(folder_filter, {"public": 0}).skip((page - 1) * folders_page_size).limit(folders_page_size)
+    result = folders_db.find(folder_filter, {"editors": 0}).skip((page - 1) * folders_page_size).limit(folders_page_size)
     folder_count = folders_db.count_documents({})
     folders = list()
     for folder in result:
@@ -76,6 +80,8 @@ def get_folders(request: Request, response: Response, page: int = 1,
 )
 def create_folder(doc: NewFolder, request: Request, response: Response,
                   current_user: LoggedUser = Depends(get_current_user)):
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="User must be logged in to create a folder")
     now = datetime.datetime.now()
     result = folders_db.insert_one({
         'createdBy': current_user.id,
@@ -129,10 +135,16 @@ def get_folder(id: str, request: Request):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Modified document'},
+        403: {'description': 'User has no permission for attempted action'},
         404: {'description': 'Document not found'}
     }
 )
-def modify_folder(id: str, current_user: LoggedUser = Depends(get_current_user)):
+def modify_folder(id: str, request: Request, current_user: LoggedUser = Depends(get_current_user)):
+    folder = get_parsed_folder(id, folders_db, None if current_user is None else current_user.id)
+    print(folder)
+    if user_has_permission(folder, current_user, request) is False:
+        raise HTTPException(status_code=403, detail="User has no permission to modify this folder")
+    print("Modifico carpeta...")
     # TODO: Chequeo de que el current user tenga permisos
     return {}
 

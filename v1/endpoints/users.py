@@ -14,7 +14,10 @@ from core.schemas.schema import *
 router = APIRouter(
     prefix="/users",
     tags=["users"],
-    responses={404: {"description": "User not found"}}
+    responses={
+        401: {'description': 'User must be logged in to perform this action'},
+        404: {"description": "User not found"}
+    }
 )
 
 tag_metadata = {
@@ -41,6 +44,7 @@ document_page_size = 10
 )
 async def get_users(request: Request, response: Response,
                     page: int = 1, username: Union[str, None] = None):
+    print(request.method)
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
 
@@ -127,6 +131,8 @@ def get_user(id: str, request: Request):
     tags=['users']
 )
 def delete_user(id: str, current_user: LoggedUser = Depends(get_current_user)):
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="User must be logged in to delete its account")
     if id != current_user.id:
         raise HTTPException(status_code=403, detail="Cant delete other users accounts")
     try:
@@ -153,6 +159,8 @@ def delete_user(id: str, current_user: LoggedUser = Depends(get_current_user)):
 )
 def get_favorites(request: Request, response: Response, id: str, page: int = 1,
                   current_user: LoggedUser = Depends(get_current_user)):
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="User must be logged in to get its favorites")
     if id != current_user.id:
         raise HTTPException(status_code=403, detail="Cant access favorites list of other users")
     if page < 1:
@@ -190,6 +198,8 @@ def get_favorites(request: Request, response: Response, id: str, page: int = 1,
     }
 )
 def add_favorite(id: str, doc_id: str, current_user: LoggedUser = Depends(get_current_user)):
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="User must be logged in to add a favorite")
     if id != current_user.id:
         raise HTTPException(status_code=403, detail="Cant add favorites to other user list")
     try:
@@ -214,6 +224,8 @@ def add_favorite(id: str, doc_id: str, current_user: LoggedUser = Depends(get_cu
     }
 )
 def remove_favorite(id: str, doc_id: str, current_user: LoggedUser = Depends(get_current_user)):
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="User must be logged in to remove a favorite")
     if id != current_user.id:
         raise HTTPException(status_code=403, detail="Cant remove favorite from other user list")
     try:

@@ -18,7 +18,7 @@ class SingletonPasswordBearer:
         if SingletonPasswordBearer.__instance is not None:
             raise Exception("This class is a singleton!")
         else:
-            SingletonPasswordBearer.__instance = OAuth2PasswordBearer(tokenUrl="token")
+            SingletonPasswordBearer.__instance = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 
 class SingletonCryptContext:
