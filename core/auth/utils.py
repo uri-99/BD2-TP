@@ -87,3 +87,11 @@ def authenticate_user(username: str, password: str):
     if not verify_password(password, user['password']):
         return False
     return user
+
+def verify_logged_in(current_user):
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="User must be logged in")
+
+
+def user_has_permission(): # TODO  :what?
+    return None
