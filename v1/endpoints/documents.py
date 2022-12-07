@@ -61,7 +61,7 @@ documents = {
         400: {'description': 'Sent wrong query param'}
     }
 )
-def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = ""):
+def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = "", current_user: LoggedUser = Depends(get_current_user)):
     wildContent = "*" + content + "*"
     wildTitle = "*" + title + "*"
     wildDescription = "*" + description + "*"
@@ -69,8 +69,35 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", 
         raise HTTPException(status_code=400, detail='Page size must be higher than zero')
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
-    print(title)
-    resp = elastic.search(index="documents", query={"bool": {
+    if current_user is None:
+        print("not logged in")
+        username = ""
+    else:
+        print("logged in, {}".format(current_user.username))
+        username = current_user.username
+    resp = elastic.search(index="documents", query={
+        "bool": {
+            "must": [
+                {
+                    "bool": {
+                        "should": [
+                            {
+                                "match": {"editors": username}
+                            },
+                            {
+                                "match": {"readers": username}
+                            },
+                            {
+                                "match": {"readers": "*"} # TODO : this but with bool field
+                            },
+                            {
+                                "match": {"editors": "*"} # TODO : this but with bool field
+                            }
+                        ],
+                        "minimum_should_match": 1
+                    }
+                }
+            ],
       "should": [
         { "fuzzy": {"title": title}},
         { "fuzzy": {"createdBy": author}},
@@ -78,12 +105,7 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", 
         { "wildcard": {"title": {"value": wildTitle}}},
         { "wildcard": {"description": {"value": wildDescription}}},
         { "wildcard" : {"content": {"value": wildContent}}}
-      ]#,
-      # "filter": [
-      #   {"term": {
-      #     # "public": "true" #TODO : make mega
-      #   }}
-      # ]
+      ]
     }})
     # print(resp)
     return resp["hits"]["hits"]
