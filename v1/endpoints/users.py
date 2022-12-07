@@ -6,7 +6,7 @@ from bson import json_util, ObjectId
 from fastapi import APIRouter, status, Request, Response, HTTPException, Depends
 
 from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user
+from core.auth.utils import get_current_user, get_password_hash
 from core.helpers.converters import oidlist_to_str
 from core.helpers.db_client import MongoManager
 from core.schemas.schema import *
@@ -78,7 +78,7 @@ def create_user(new_user: NewUser, request: Request, response: Response):
     result = users_db.insert_one({
             'username': new_user.username,
             'mail': new_user.mail,
-            'password': new_user.password,
+            'password': get_password_hash(new_user.password),
             'notes': [],
             'favorites': [],
             'folders': []

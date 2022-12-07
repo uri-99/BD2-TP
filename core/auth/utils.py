@@ -4,6 +4,8 @@ from datetime import timedelta, datetime
 from bson import ObjectId
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
+from starlette.status import HTTP_401_UNAUTHORIZED
+
 from core.helpers.db_client import MongoManager
 from core.auth.models import *
 from jose import jwt, JWTError
@@ -28,12 +30,25 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     return encoded_jwt
 
 
+# def not_logged_catcher(): #this does not work
+#     try:
+#         ret = Depends(SingletonPasswordBearer.get_instance())
+#         print("\n\nin")
+#     except HTTP_401_UNAUTHORIZED:
+#         print("\n\ncatched")
+#         return None
+#     else:
+#         return ret
+
+# async def get_current_user(token: str = not_logged_catcher()):
 async def get_current_user(token: str = Depends(SingletonPasswordBearer.get_instance())):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if token is None:
+        return None
     try:
         payload = jwt.decode(token, jwt_key, algorithms=[ALGORITHM])
         id: str = payload.get("sub")
@@ -74,3 +89,7 @@ def authenticate_user(username: str, password: str):
     if not verify_password(password, user['password']):
         return False
     return user
+
+def verify_logged_in(current_user):
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="User must be logged in")
