@@ -47,6 +47,8 @@ async def get_current_user(token: str = Depends(SingletonPasswordBearer.get_inst
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if token is None:
+        return None
     try:
         payload = jwt.decode(token, jwt_key, algorithms=[ALGORITHM])
         id: str = payload.get("sub")

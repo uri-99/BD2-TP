@@ -142,7 +142,7 @@ async def get_document(id: str, current_user: LoggedUser = Depends(get_current_u
 
     # authorization = "Bearer temporalInvalidToken"
 
-    if "*" in elastic_doc["_source"]["readers"]: #TODO : use new doc format with readers+writers
+    if "*" in elastic_doc["_source"]["readers"] or "*" in elastic_doc["_source"]["editors"]: #TODO : use new doc format with readers+writers
         print("in here2")
         return elastic_doc["_source"]
     else: #doc is not open to read
