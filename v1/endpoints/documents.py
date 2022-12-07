@@ -24,32 +24,32 @@ tag_metadata = {
         'description': 'Managing of documents'
 }
 
-documents = {
-    '6373eee1d9c1f8cd2703e2f0': {
-        'id': '6373eee1d9c1f8cd2703e2f0',
-        "createdBy": "6373e8c9ea6af1dc84089d97",
-        "created": 'ISODate("2016-05-18T16:00:00Z")',
-        "lastEditedBy": "6373e902a5e607af97b4b1fb",
-        "lastEdited": 'ISODate("2016-06-10T16:30:05Z")',
-        "editors": ["6373e8c9ea6af1dc84089d97", "6373e902a5e607af97b4b1fb"],
-        "title": "Persistencia poliglota",
-        "description": "Cosas a tener en cuenta",
-        "content": ["## Introducción", "### Concepto", "La persistencia poliglota consiste en ..."],
-        "public": True
-    },
-    '6373f2bf27a4e3b55da2cc3c': {
-        'id': '6373f2bf27a4e3b55da2cc3c',
-        "createdBy": "6373e902a5e607af97b4b1fb",
-        "created": 'ISODate("2016-05-18T16:00:00Z")',
-        "lastEditedBy": "6373e902a5e607af97b4b1fb",
-        "lastEdited": 'ISODate("2016-05-18T16:00:00Z")',
-        "editors": ["6373e902a5e607af97b4b1fb"],
-        "title": "Por qué usar Elastic Search para búsqueda",
-        "description": "Nota sobre ES y sus múltiples beneficios",
-        "content": ["## Abstract", "Elastic Search es una herramienta muy usada hoy en dia..."],
-        "public": True
-    }
-}
+# documents = {
+#     '6373eee1d9c1f8cd2703e2f0': {
+#         'id': '6373eee1d9c1f8cd2703e2f0',
+#         "createdBy": "6373e8c9ea6af1dc84089d97",
+#         "created": 'ISODate("2016-05-18T16:00:00Z")',
+#         "lastEditedBy": "6373e902a5e607af97b4b1fb",
+#         "lastEdited": 'ISODate("2016-06-10T16:30:05Z")',
+#         "editors": ["6373e8c9ea6af1dc84089d97", "6373e902a5e607af97b4b1fb"],
+#         "title": "Persistencia poliglota",
+#         "description": "Cosas a tener en cuenta",
+#         "content": ["## Introducción", "### Concepto", "La persistencia poliglota consiste en ..."],
+#         "public": True
+#     },
+#     '6373f2bf27a4e3b55da2cc3c': {
+#         'id': '6373f2bf27a4e3b55da2cc3c',
+#         "createdBy": "6373e902a5e607af97b4b1fb",
+#         "created": 'ISODate("2016-05-18T16:00:00Z")',
+#         "lastEditedBy": "6373e902a5e607af97b4b1fb",
+#         "lastEdited": 'ISODate("2016-05-18T16:00:00Z")',
+#         "editors": ["6373e902a5e607af97b4b1fb"],
+#         "title": "Por qué usar Elastic Search para búsqueda",
+#         "description": "Nota sobre ES y sus múltiples beneficios",
+#         "content": ["## Abstract", "Elastic Search es una herramienta muy usada hoy en dia..."],
+#         "public": True
+#     }
+# }
 
 
 @router.get(
@@ -62,6 +62,7 @@ documents = {
     }
 )
 def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = "", current_user: LoggedUser = Depends(get_current_user)):
+    # TODO: NO ESTÁ ANDANDO
     wildContent = "*" + content + "*"
     wildTitle = "*" + title + "*"
     wildDescription = "*" + description + "*"
@@ -82,16 +83,16 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", 
                     "bool": {
                         "should": [
                             {
-                                "match": {"editors": username}
+                                "match": {"writers": username}
                             },
                             {
                                 "match": {"readers": username}
                             },
                             {
-                                "match": {"readers": "*"} # TODO : this but with bool field
+                                "match": {"allCanRead": True}
                             },
                             {
-                                "match": {"editors": "*"} # TODO : this but with bool field
+                                "match": {"allCanWrite": True}
                             }
                         ],
                         "minimum_should_match": 1
@@ -120,22 +121,20 @@ def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", 
 )
 def create_document(doc: NewDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
     verify_logged_in(current_user)
-    # if current_user is None:
-    #     raise HTTPException(status_code=401, detail="User must be logged in")
-    # TODO : catch repeated random
-    editors = doc.editors
-    if current_user.username not in editors:
-        editors.append(current_user.username)
+    writers = doc.writers
+    if current_user.username not in writers:
+        writers.append(current_user.username)
 
-    new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
+    new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')     # TODO : catch repeated random
     document = {
-        # '_id': new_doc_id,
         'createdBy': current_user.username,
         'createdOn': datetime.now(),
         'lastEditedBy': current_user.username,
         'lastEdited': datetime.now(),
-        'editors': editors,
         'readers': doc.readers,
+        'writers': writers,
+        'allCanRead': doc.allCanRead,
+        'allCanWrite': doc.allCanWrite,
         'title': doc.title,
         'description': doc.description,
         'content': doc.content,
@@ -160,13 +159,13 @@ async def get_document(id: str, current_user: LoggedUser = Depends(get_current_u
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-    if "*" in elastic_doc["_source"]["readers"]:
+    if elastic_doc["_source"]["allCanRead"] is True or elastic_doc["_source"]["allCanWrite"] is True:
         return elastic_doc["_source"]
     else: #doc is not open to read
         if current_user is None:
             raise HTTPException(status_code=403, detail="User has no access to this document")
         else:
-            if current_user.username in elastic_doc["_source"]["editors"]: #TODO : use new doc format with readers+writers
+            if current_user.username in elastic_doc["_source"]["readers"] or current_user.username in elastic_doc["_source"]["writers"]:
                 return elastic_doc["_source"]
             else:
                 raise HTTPException(status_code=403, detail="User has no access to this document")
@@ -188,17 +187,20 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-    if current_user.username not in elastic_doc["_source"]["editors"]:
+    if current_user.username not in elastic_doc["_source"]["writers"]:
         raise HTTPException(status_code=403, detail="User has no access to this document")
 
-    editors = doc.editors
-    if elastic_doc["_source"]["createdBy"] not in editors:
-        editors.append(elastic_doc["_source"]["createdBy"])
+    writers = doc.writers
+    if elastic_doc["_source"]["createdBy"] not in writers:
+        writers.append(elastic_doc["_source"]["createdBy"])
 
     newDoc = {
         'lastEditedBy': current_user.username,
         'lastEdited': datetime.now(),
-        'editors': editors,
+        'readers': doc.readers,
+        'writers': writers,
+        'allCanRead': doc.allCanRead,
+        'allCanWrite': doc.allCanWrite,
         'title': doc.title,
         'description': doc.description,
         'content': doc.content,
@@ -225,7 +227,7 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-    print(doc["_source"]["editors"])
+    print(doc["_source"]["writers"])
     print(current_user.username)
     if current_user.username == doc["_source"]["createdBy"]:
         resp = elastic.delete(index="documents", id=id)
