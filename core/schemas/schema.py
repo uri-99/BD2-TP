@@ -25,13 +25,17 @@ class NewDocument(BaseModel):
     description: str
     content: List[str]
     parentFolder: str
-    editors: List[str]
     readers: List[str]
+    writers: List[str]
+    allCanRead: bool
+    allCanWrite: bool
 
 
 class UpdateDocument(BaseModel):
-    editors: List[str]
     readers: List[str]
+    writers: List[str]
+    allCanRead: bool
+    allCanWrite: bool
     title: str
     description: str
     content: List[str]
@@ -42,8 +46,10 @@ class Document(BaseModel):
     createdOn: str            # Deberia ser una fecha
     lastEditedBy: str
     lastEdited: str         # Deberia ser una fecha
-    editors: List[str]
     readers: List[str]
+    writers: List[str]
+    allCanRead: bool
+    allCanWrite: bool
     title: str
     description: str
     content: List[str]
