@@ -93,5 +93,13 @@ def verify_logged_in(current_user):
         raise HTTPException(status_code=401, detail="User must be logged in")
 
 
-def user_has_permission(): # TODO  :what?
-    return None
+def user_has_permission(obj, current_user: LoggedUser, request: Request):
+    if str(obj['createdBy']) == current_user.id:                                        # User is owner
+        return True
+    if current_user is not None and obj['editors'] is True or \
+            str(obj['editors'][0]) == current_user.id:                                  # Object is editable by everyone/someone
+        return request.method.title() != 'DELETE'
+    if obj['editors'] is False and obj['readers'] is True or \
+            current_user is not None and str(obj['readers'][0]) == current_user.id:     # Object is readable by everyone/someone
+        return request.method.title() == 'GET'
+    return False     
