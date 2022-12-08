@@ -63,22 +63,29 @@ class Folder(BaseModel):
     createdOn: str            # Deberia ser una fecha
     lastEditedBy: str
     lastEdited: str         # Deberia ser una fecha
-    editors: List[str]
     title: str
     description: str
+    writers: List[str]
+    readers: List[str]
+    allCanWrite: bool
+    allCanRead: bool
 
 
 class UpdateFolder(BaseModel):
-    editors: List[str]
     title: str
     description: str
     content: List[str]
-    public: bool
-
+    writers: List[str]
+    readers: List[str]
+    allCanWrite: Optional[bool] = False
+    allCanRead: Optional[bool] = False
 
 
 class NewFolder(BaseModel):
     title: str
     description: str
     content: Optional[List[str]]
-    public: Optional[bool]
+    writers: Optional[List[str]]
+    readers: Optional[List[str]]
+    allCanWrite: Optional[bool] = False
+    allCanRead: Optional[bool] = False

@@ -8,6 +8,7 @@ from core.helpers.db_client import MongoManager
 from core.auth.models import *
 from jose import jwt, JWTError
 
+from core.models.database import Document, Folder
 from core.settings import SingletonSettings
 
 ALGORITHM = "HS256"
@@ -93,13 +94,30 @@ def verify_logged_in(current_user):
         raise HTTPException(status_code=401, detail="User must be logged in")
 
 
-def user_has_permission(obj, current_user: LoggedUser, request: Request):
-    if str(obj['createdBy']) == current_user.id:                                        # User is owner
+def user_has_permission(obj: Union[Document, Folder], current_user: LoggedUser, request: Request):
+    """Checks if the user has permission to access the requested Document or Folder
+
+        Parameters
+        ----------
+        obj : Document, Folder
+            The document or folder to check access to
+        current_user: LoggedUser
+            User making the request (or None if no user present)
+        request : Request
+            HTTP Request made
+
+        Returns
+        -------
+        bool
+            A boolean that tells whether the user has access to the object or not
+        """
+    user_is_not_none = current_user is not None
+    if user_is_not_none and str(obj['createdBy']) == current_user.id:                       # User is owner
         return True
-    if current_user is not None and obj['editors'] is True or \
-            str(obj['editors'][0]) == current_user.id:                                  # Object is editable by everyone/someone
+    if user_is_not_none and \
+            (obj['allCanWrite'] is True or str(obj['writers'][0]) == current_user.id):                                  # Object is editable by everyone/someone
         return request.method.title() != 'DELETE'
-    if obj['editors'] is False and obj['readers'] is True or \
-            current_user is not None and str(obj['readers'][0]) == current_user.id:     # Object is readable by everyone/someone
+    if obj['allCanRead'] is True or \
+            (user_is_not_none and str(obj['readers'][0]) == current_user.id):                 # Object is readable by everyone/someone
         return request.method.title() == 'GET'
-    return False     
+    return False
