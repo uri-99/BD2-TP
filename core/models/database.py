@@ -15,11 +15,13 @@ class Document(BaseModel):
     created: str            # Deberia ser una fecha
     lastEditedBy: str
     lastEdited: str         # Deberia ser una fecha
-    editors: List[str]
     title: str
     description: str
     content: List[str]
-    public: bool
+    writers: List[str]
+    readers: List[str]
+    allCanWrite: bool
+    allCanRead: bool
 
 
 class Folder(BaseModel):
@@ -28,8 +30,10 @@ class Folder(BaseModel):
     created: str  # Deberia ser una fecha
     lastEditedBy: str
     lastEdited: str  # Deberia ser una fecha
-    editors: List[str]
     title: str
     description: str
     content: List[str]
-    public: bool
+    writers: List[str]
+    readers: List[str]
+    allCanWrite: bool
+    allCanRead: bool

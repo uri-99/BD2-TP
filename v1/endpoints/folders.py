@@ -52,18 +52,21 @@ def get_folders(request: Request, response: Response, page: int = 1,
     folder_count = folders_db.count_documents({})
     folders = list()
     for folder in result:
-        folders.append({
-            'self': str(request.url.remove_query_params(["title", "author"])) + "/" + str(folder['_id']),
-            'id': str(folder['_id']),
-            'createdBy': str(folder['createdBy']),
-            'lastEditedBy': str(folder['lastEditedBy']),
-            'createdOn': str(folder['createdOn']),
-            'lastEdited': str(folder['lastEdited']),
-            'title': folder['title'],
-            'description': folder['description'],
-            'content': oidlist_to_str(folder['content']),
-            'editors': oidlist_to_str(folder['editors'])
-        })
+        folders.append(Folder(
+            self=str(request.url.remove_query_params(["title", "author", "page"])) + "/" + str(folder['_id']),
+            id=str(folder['_id']),
+            createdBy=str(folder['createdBy']),
+            lastEditedBy=str(folder['lastEditedBy']),
+            createdOn=str(folder['createdOn']),
+            lastEdited=str(folder['lastEdited']),
+            title=folder['title'],
+            description=folder['description'],
+            content=folder['content'],
+            writers=folder['writers'],
+            readers=folder['readers'],
+            allCanWrite=folder['allCanWrite'],
+            allCanRead=folder['allCanWrite'],
+        ))
     response.headers.append("first", str(request.url.remove_query_params(["page"])) + "?page=1")
     response.headers.append("last", str(request.url.remove_query_params(["page"]))
                             + "?page=" + str(int((folder_count - 1) / folders_page_size) + 1))
@@ -81,19 +84,28 @@ def get_folders(request: Request, response: Response, page: int = 1,
 def create_folder(doc: NewFolder, request: Request, response: Response,
                   current_user: LoggedUser = Depends(get_current_user)):
     verify_logged_in(current_user)
+    are_writers = doc.writers is not None
+    are_readers = doc.readers is not None
+    are_docs = doc.content is not None
+    if are_writers and users_exist(doc.writers) is False:
+        raise HTTPException(status_code=400, detail='Writer sent does not exist')
+    if are_readers and users_exist(doc.readers) is False:
+        raise HTTPException(status_code=400, detail='Reader sent does not exist')
+    if are_docs and docs_exist(doc.content) is False:
+        raise HTTPException(status_code=400, detail='Document to include on folder does not exist')
     now = datetime.datetime.now()
     result = folders_db.insert_one({
         'createdBy': current_user.id,
-        'createdOn': now,
         'lastEditedBy': current_user.id,
+        'createdOn': now,
         'lastEdited': now,
-        'editors': [
-            current_user.id
-        ],
         'title': doc.title,
         'description': doc.description,
         'content': doc.content,
-        'public': doc.public if doc.public is not None else 'true'
+        'writers': doc.writers if are_writers else [],
+        'allCanWrite': doc.allCanWrite if doc.allCanWrite is not None else False,
+        'readers': doc.readers if are_readers else [],
+        'allCanRead': doc.allCanRead if doc.allCanRead is not None else False
     })
     response.headers.append("Location", str(request.url) + "/" + str(result.inserted_id))
     return {}
@@ -133,14 +145,16 @@ def get_folder(id: str, request: Request):
     "/{id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
-        204: {'description': 'Modified document'},
+        204: {'description': 'Modified Folder'},
         403: {'description': 'User has no permission for attempted action'},
-        404: {'description': 'Document not found'}
+        404: {'description': 'Folder not found'}
     }
 )
-def modify_folder(id: str, request: Request, current_user: LoggedUser = Depends(get_current_user)):
+def modify_folder(id: str, folder: UpdateFolder, request: Request,
+                  current_user: LoggedUser = Depends(get_current_user)):
     folder = get_parsed_folder(id, folders_db, None if current_user is None else current_user.id)
-    print(folder)
+    if folder is None:
+        raise HTTPException(status_code=404, detail="Folder not found")
     if user_has_permission(folder, current_user, request) is False:
         raise HTTPException(status_code=403, detail="User has no permission to modify this folder")
     print("Modifico carpeta...")
@@ -158,4 +172,19 @@ def modify_folder(id: str, request: Request, current_user: LoggedUser = Depends(
 )
 def delete_folder(id: str, current_user: LoggedUser = Depends(get_current_user)):
     # TODO: Chequeo de que el current user tenga permisos
+
     return {}
+
+
+# TODO: Check for more optimized way of doing it (one request for all)
+def users_exist(user_list: List[str]):
+    try:
+        for user in user_list:
+            if users_db.find_one({'_id': ObjectId(user)}) is None:
+                return False
+    except InvalidId:
+        return False
+
+
+def docs_exist(doc_list: List[str]):
+    return False
