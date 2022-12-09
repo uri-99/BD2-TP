@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.security import OAuth2PasswordRequestForm
 
 from core.auth.utils import *
-from v1.endpoints import users, documents, folders
+from v1.endpoints import users, documents, folders, favorites
 
 app = FastAPI(
     title=SingletonSettings.get_instance().app_name,
@@ -13,11 +13,13 @@ app = FastAPI(
 app.include_router(users.router)
 app.include_router(documents.router)
 app.include_router(folders.router)
+app.include_router(favorites.router)
 
 app.openapi_tags = [
     users.tag_metadata,
     documents.tag_metadata,
-    folders.tag_metadata
+    folders.tag_metadata,
+    favorites.tag_metadata
 ]
 
 
