@@ -8,7 +8,7 @@
       </ul>
     </li>
     <li>
-        <a href="#Instalación">Instalación</a>
+        <a href="#instalación">Instalación</a>
             <ul>
                 <li><a href="#variables-de-entorno">Variables de entorno</a></li>
                 <li><a href="#programas-necesarios">Programas necesarios</a></li>
@@ -50,7 +50,9 @@ Por otro lado, para guardar los datos de la aplicación se utilizó la técnica 
 
 Por último, para la autenticación de los usuarios usamos <a href="https://jwt.io/">JSON Web Tokens</a>, o JWT para abreviar, donde un usuario se autentica en primera instancia y se le devuelve un token que usará para autenticarse en los siguientes pedidos.
 
-## Setup
+
+
+## Instalación
 
 ### Variables de entorno
 
