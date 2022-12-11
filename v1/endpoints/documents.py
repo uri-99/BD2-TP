@@ -7,7 +7,7 @@ from fastapi import Request, Response, Header
 
 from core.auth.models import LoggedUser
 from core.auth.utils import get_current_user, verify_logged_in, verify_existing_users, verify_existing_folder, \
-    add_newDocId_to_mongo_folder
+    add_newDocId_to_mongo_folder, remove_docId_from_mongo_folder
 
 from . import *
 from core.helpers.db_client import ElasticManager
@@ -215,11 +215,13 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
         doc = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
+    parentFolderId = doc["_source"]["parentFolder"]
+    print("parent:{}".format(parentFolderId))
 
-    print(doc["_source"]["writers"])
-    print(current_user.username)
     if current_user.username == doc["_source"]["createdBy"]:
         resp = elastic.delete(index="documents", id=id)
     else:
         raise HTTPException(status_code=403, detail="User has no permission to delete this document")
+
+    remove_docId_from_mongo_folder(doc["_id"], parentFolderId)
     return {}

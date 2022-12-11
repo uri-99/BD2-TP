@@ -110,11 +110,12 @@ def verify_existing_folder(folderId, userId):
     folder = folders_db.find_one({'_id': ObjectId(folderId)})
     if folder is None:
         raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(folderId))
-    if folder["allCanWrite"] is False:
-        if userId not in folder["writers"]:
-            print(userId)
-            print(folder["writers"])
-            raise HTTPException(status_code=403, detail="User has no access to this document")
+    if folder["createdBy"] != userId: #TODO: test if works
+        if folder["allCanWrite"] is False:
+            if userId not in folder["writers"]:
+                print(userId)
+                print(folder["writers"])
+                raise HTTPException(status_code=403, detail="User has no access to this document")
 
 
 def add_newDocId_to_mongo_folder(newDocId, parentFolderId):
@@ -125,6 +126,23 @@ def add_newDocId_to_mongo_folder(newDocId, parentFolderId):
     newContent = folder["content"]
     newContent.append(newDocId)
     folders_db.update_one({'_id': ObjectId(parentFolderId)}, {"$set": {"content": newContent}})
+
+def remove_docId_from_mongo_folder(docId, parentFolderId):
+    folder = folders_db.find_one({'_id': ObjectId(parentFolderId)})
+    if folder is None:
+        raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(parentFolderId))
+
+    newContent = folder["content"]
+    print("\n\n---------------")
+    print(newContent)
+    print(docId)
+    try:
+        newContent.remove(docId)
+    except:
+        raise HTTPException(status_code=500, detail="Server error, folder doesn't contain document Id. This is a deprecated version folder")
+    folders_db.update_one({'_id': ObjectId(parentFolderId)}, {"$set": {"content": newContent}})
+
+
 
 
 def user_has_permission(obj: Union[DBDocument, DBFolder], current_user: LoggedUser, request_method: str):
