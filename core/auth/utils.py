@@ -17,6 +17,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 load_dotenv(SingletonSettings.get_instance().Config.env_file)
 jwt_key = os.getenv('JWT_KEY')
 
+users_db = MongoManager.get_instance().BD2.User
+
 
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()
@@ -93,6 +95,14 @@ def authenticate_user(username: str, password: str):
 def verify_logged_in(current_user):
     if current_user is None:
         raise HTTPException(status_code=401, detail="User must be logged in")
+
+def verify_existing_users(writers, readers):
+    for writer in writers:
+        if users_db.find_one({'username': writer}) is None:
+            raise HTTPException(status_code=406, detail="User '{}' does not exist".format(writer))
+    for reader in readers:
+        if users_db.find_one({'username': reader}) is None:
+            raise HTTPException(status_code=406, detail="User '{}' does not exist".format(reader))
 
 
 def user_has_permission(obj: Union[DBDocument, DBFolder], current_user: LoggedUser, request_method: str):

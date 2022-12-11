@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import Request, Response, Header
 
 from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user, verify_logged_in
+from core.auth.utils import get_current_user, verify_logged_in, verify_existing_users
 
 from . import *
 from core.helpers.db_client import ElasticManager
@@ -95,6 +95,8 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
     if current_user.username not in writers:
         writers.append(current_user.username)
 
+    verify_existing_users(writers, doc.readers)
+
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     validId = False
     while not validId:
@@ -172,6 +174,7 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
     writers = doc.writers
     if elastic_doc["_source"]["createdBy"] not in writers:
         writers.append(elastic_doc["_source"]["createdBy"])
+    verify_existing_users(writers, doc.readers)
 
     newDoc = {
         'lastEditedBy': current_user.username,
