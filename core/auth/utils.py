@@ -106,10 +106,25 @@ def verify_existing_users(writers, readers):
         if users_db.find_one({'username': reader}) is None:
             raise HTTPException(status_code=406, detail="User '{}' does not exist".format(reader))
 
-def verify_existing_folder(folder):
-    # if folders_db.find_one({'name': folder}) is None:
-    #     raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(writer))
-    return True
+def verify_existing_folder(folderId, userId):
+    folder = folders_db.find_one({'_id': ObjectId(folderId)})
+    if folder is None:
+        raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(folderId))
+    if folder["allCanWrite"] is False:
+        if userId not in folder["writers"]:
+            print(userId)
+            print(folder["writers"])
+            raise HTTPException(status_code=403, detail="User has no access to this document")
+
+
+def add_newDocId_to_mongo_folder(newDocId, parentFolderId):
+    folder = folders_db.find_one({'_id': ObjectId(parentFolderId)})
+    if folder is None:
+        raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(parentFolderId))
+
+    newContent = folder["content"]
+    newContent.append(newDocId)
+    folders_db.update_one({'_id': ObjectId(parentFolderId)}, {"$set": {"content": newContent}})
 
 
 def user_has_permission(obj: Union[DBDocument, DBFolder], current_user: LoggedUser, request_method: str):

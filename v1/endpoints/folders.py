@@ -187,4 +187,4 @@ def users_exist(user_list: List[str]):
 
 
 def docs_exist(doc_list: List[str]):
-    return False
+    return True

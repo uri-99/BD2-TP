@@ -6,7 +6,8 @@ from datetime import datetime
 from fastapi import Request, Response, Header
 
 from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user, verify_logged_in, verify_existing_users, verify_existing_folder
+from core.auth.utils import get_current_user, verify_logged_in, verify_existing_users, verify_existing_folder, \
+    add_newDocId_to_mongo_folder
 
 from . import *
 from core.helpers.db_client import ElasticManager
@@ -86,7 +87,9 @@ def get_documents(page: int = 1, title: Union[str, None] = "", author: Union[str
     status_code=status.HTTP_201_CREATED,
     responses={
         201: {'description': 'Document successfully created'},
-        401: {'description': 'User must be logged in'}
+        401: {'description': 'User must be logged in'},
+        406: {'description': 'User does not exist'},
+        403: {'description': 'User has no access to this folder'}
     }
 )
 def create_document(doc: NewDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
@@ -96,7 +99,7 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
         writers.append(current_user.username)
 
     verify_existing_users(writers, doc.readers)
-    verify_existing_folder(doc.parentFolder)
+    verify_existing_folder(doc.parentFolder, current_user.id)
 
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     validId = False
@@ -120,8 +123,10 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
         'title': doc.title,
         'description': doc.description,
         'content': doc.content,
+        'parentFolder': doc.parentFolder
     }
     resp = elastic.index(index="documents", id=new_doc_id, document=document)
+    add_newDocId_to_mongo_folder(new_doc_id, doc.parentFolder)
     response.headers.append("Location", request.url._url + "/" + resp['_id'])
     return {}
 
@@ -133,6 +138,7 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
     responses={
         200: {'description': 'Found document'},
         404: {'description': 'Document not found for id sent'},
+        403: {'description': 'User has no access to this document'}
     }
 )
 async def get_document(id: str, current_user: LoggedUser = Depends(get_current_user)):
