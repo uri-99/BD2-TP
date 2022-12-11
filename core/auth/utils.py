@@ -110,7 +110,7 @@ def verify_existing_folder(folderId, userId):
     folder = folders_db.find_one({'_id': ObjectId(folderId)})
     if folder is None:
         raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(folderId))
-    if folder["createdBy"] != userId: #TODO: test if works
+    if folder["createdBy"] != userId:
         if folder["allCanWrite"] is False:
             if userId not in folder["writers"]:
                 print(userId)

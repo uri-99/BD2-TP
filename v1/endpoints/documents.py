@@ -47,37 +47,41 @@ def get_documents(page: int = 1, title: Union[str, None] = "", author: Union[str
     else:
         print("logged in, {}".format(current_user.username))
         username = current_user.username
-    resp = elastic.search(index="documents", query={
-        "bool": {
-            "must": [
-                {
-                    "bool": {
-                        "should": [
-                            {
-                                "match": {"writers": username}
-                            },
-                            {
-                                "match": {"readers": username}
-                            },
-                            {
-                                "match": {"allCanRead": True}
-                            },
-                            {
-                                "match": {"allCanWrite": True}
-                            }
-                        ],
-                        "minimum_should_match": 1
+    resp = elastic.search(index="documents", body={
+        "from": (page-1)*10,
+        "size": 10,
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "bool": {
+                            "should": [
+                                {
+                                    "match": {"writers": username}
+                                },
+                                {
+                                    "match": {"readers": username}
+                                },
+                                {
+                                    "match": {"allCanRead": True}
+                                },
+                                {
+                                    "match": {"allCanWrite": True}
+                                }
+                            ],
+                            "minimum_should_match": 1
+                        }
                     }
-                }
-            ],
-      "should": [
-        { "fuzzy": {"title": title}},
-        { "fuzzy": {"createdBy": author}},
-        { "fuzzy": {"description": description}},
-        { "wildcard": {"title": {"value": wildTitle}}},
-        { "wildcard": {"description": {"value": wildDescription}}},
-        { "wildcard" : {"content": {"value": wildContent}}}
-      ]
+                ],
+          "should": [
+            { "fuzzy": {"title": title}},
+            { "fuzzy": {"createdBy": author}},
+            { "fuzzy": {"description": description}},
+            { "wildcard": {"title": {"value": wildTitle}}},
+            { "wildcard": {"description": {"value": wildDescription}}},
+            { "wildcard" : {"content": {"value": wildContent}}}
+          ]
+        }
     }})
     # print(resp)
     return resp["hits"]["hits"]
