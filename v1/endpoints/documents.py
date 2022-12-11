@@ -24,33 +24,6 @@ tag_metadata = {
         'description': 'Managing of documents'
 }
 
-# documents = {
-#     '6373eee1d9c1f8cd2703e2f0': {
-#         'id': '6373eee1d9c1f8cd2703e2f0',
-#         "createdBy": "6373e8c9ea6af1dc84089d97",
-#         "created": 'ISODate("2016-05-18T16:00:00Z")',
-#         "lastEditedBy": "6373e902a5e607af97b4b1fb",
-#         "lastEdited": 'ISODate("2016-06-10T16:30:05Z")',
-#         "editors": ["6373e8c9ea6af1dc84089d97", "6373e902a5e607af97b4b1fb"],
-#         "title": "Persistencia poliglota",
-#         "description": "Cosas a tener en cuenta",
-#         "content": ["## Introducción", "### Concepto", "La persistencia poliglota consiste en ..."],
-#         "public": True
-#     },
-#     '6373f2bf27a4e3b55da2cc3c': {
-#         'id': '6373f2bf27a4e3b55da2cc3c',
-#         "createdBy": "6373e902a5e607af97b4b1fb",
-#         "created": 'ISODate("2016-05-18T16:00:00Z")',
-#         "lastEditedBy": "6373e902a5e607af97b4b1fb",
-#         "lastEdited": 'ISODate("2016-05-18T16:00:00Z")',
-#         "editors": ["6373e902a5e607af97b4b1fb"],
-#         "title": "Por qué usar Elastic Search para búsqueda",
-#         "description": "Nota sobre ES y sus múltiples beneficios",
-#         "content": ["## Abstract", "Elastic Search es una herramienta muy usada hoy en dia..."],
-#         "public": True
-#     }
-# }
-
 
 @router.get(
     "",
@@ -61,12 +34,10 @@ tag_metadata = {
         400: {'description': 'Sent wrong query param'}
     }
 )
-def get_documents(limit: int = 10, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = "", current_user: LoggedUser = Depends(get_current_user)):
+def get_documents(page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = "", current_user: LoggedUser = Depends(get_current_user)):
     wildContent = "*" + content + "*"
     wildTitle = "*" + title + "*"
     wildDescription = "*" + description + "*"
-    if limit < 0:
-        raise HTTPException(status_code=400, detail='Page size must be higher than zero')
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
     if current_user is None:
@@ -154,7 +125,7 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
 
 @router.get(
     "/{id}",
-    response_model=Document,
+    #response_model=Document,
     status_code=status.HTTP_200_OK,
     responses={
         200: {'description': 'Found document'},

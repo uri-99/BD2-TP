@@ -42,6 +42,8 @@ class UpdateDocument(BaseModel):
 
 
 class Document(BaseModel):
+    self: str
+    id: str
     createdBy: str
     createdOn: str            # Deberia ser una fecha
     lastEditedBy: str

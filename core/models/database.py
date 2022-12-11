@@ -9,10 +9,10 @@ class User(BaseModel):
     favourites: List[str]
 
 
-class Document(BaseModel):
+class DBDocument(BaseModel):
     _id: str
     createdBy: str
-    created: str            # Deberia ser una fecha
+    createdOn: str            # Deberia ser una fecha
     lastEditedBy: str
     lastEdited: str         # Deberia ser una fecha
     title: str
@@ -24,7 +24,7 @@ class Document(BaseModel):
     allCanRead: bool
 
 
-class Folder(BaseModel):
+class DBFolder(BaseModel):
     _id: str
     createdBy: str
     created: str  # Deberia ser una fecha

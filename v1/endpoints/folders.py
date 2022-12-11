@@ -155,7 +155,7 @@ def modify_folder(id: str, folder: UpdateFolder, request: Request,
     folder = get_parsed_folder(id, folders_db, None if current_user is None else current_user.id)
     if folder is None:
         raise HTTPException(status_code=404, detail="Folder not found")
-    if user_has_permission(folder, current_user, request) is False:
+    if user_has_permission(folder, current_user, request.method.title()) is False:
         raise HTTPException(status_code=403, detail="User has no permission to modify this folder")
     print("Modifico carpeta...")
     # TODO: Chequeo de que el current user tenga permisos
