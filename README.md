@@ -1,5 +1,18 @@
 # Notilokos
 
+Este proyecto forma parte del trabajo final de la materia Bases de Datos 2, donde se pide realizar un software para el manejo de notas utilizando la técnica de persistencia políglota con las bases de datos analizadas durante la cursada de la materia.
+
+Una descripción con mayor detalle se puede encontrar en <a href="https://docs.google.com/presentation/d/1McvCL0FnLXXur0-HPIOZXAANOZ_mE9RxHxnfA2_eOyQ/edit?usp=sharing">la presentación</a> realizada.
+
+Los miembros del grupo <b>Los Notilokos</b> somos:
+* [BIRSA, NICOLAS EZEQUIEL](https://github.com/Fegrant)
+* [MIHURA, URIEL](https://github.com/uri-99)
+* SOLEÑO, JUSTO NICOLAS
+
+
+
+## Índice
+
 <ol>
     <li>
       <a href="#acerca-del-proyecto">Acerca del proyecto</a>
@@ -35,15 +48,6 @@ Notilokos es un software para el manejo de notas, donde un usuario puede:
 - Guardar notas de otros como notas favoritas.
 
 Se expone una API para los distintos pedidos del usuario, donde se puede usar el swagger generado para realizar dichos pedidos de una manera más fácil y cómoda.
-
-## Los NotiLokos
-* [BIRSA, NICOLAS EZEQUIEL](https://github.com/Fegrant)
-* [MIHURA, URIEL](https://github.com/uri-99)
-* SOLEÑO, JUSTO NICOLAS
-
-[La presentación](https://docs.google.com/presentation/d/1McvCL0FnLXXur0-HPIOZXAANOZ_mE9RxHxnfA2_eOyQ/edit?usp=sharing)
-___
-
 
 ### Tecnologías usadas
 
