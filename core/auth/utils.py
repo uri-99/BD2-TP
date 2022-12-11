@@ -18,6 +18,8 @@ load_dotenv(SingletonSettings.get_instance().Config.env_file)
 jwt_key = os.getenv('JWT_KEY')
 
 users_db = MongoManager.get_instance().BD2.User
+folders_db = MongoManager.get_instance().BD2.Folder
+
 
 
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
@@ -103,6 +105,11 @@ def verify_existing_users(writers, readers):
     for reader in readers:
         if users_db.find_one({'username': reader}) is None:
             raise HTTPException(status_code=406, detail="User '{}' does not exist".format(reader))
+
+def verify_existing_folder(folder):
+    # if folders_db.find_one({'name': folder}) is None:
+    #     raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(writer))
+    return True
 
 
 def user_has_permission(obj: Union[DBDocument, DBFolder], current_user: LoggedUser, request_method: str):

@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import Request, Response, Header
 
 from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user, verify_logged_in, verify_existing_users
+from core.auth.utils import get_current_user, verify_logged_in, verify_existing_users, verify_existing_folder
 
 from . import *
 from core.helpers.db_client import ElasticManager
@@ -96,6 +96,7 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
         writers.append(current_user.username)
 
     verify_existing_users(writers, doc.readers)
+    verify_existing_folder(doc.parentFolder)
 
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     validId = False
