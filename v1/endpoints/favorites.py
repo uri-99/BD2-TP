@@ -50,38 +50,42 @@ def get_favorites(request: Request, response: Response, page: int = 1,
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
     favorites_list = users_db.find_one({"_id": ObjectId(current_user.id)}, {"favorites": 1, "_id": 0})['favorites']
-    favorite_docs = elastic.search(index="documents", size=1, query={
-        "bool": {
-            "must": [
-                {"terms": {"_id": favorites_list}},
-                {
-                    "bool": {
-                        "should": [
-                            {
-                                "match": {"writers": current_user.id}
-                            },
-                            {
-                                "match": {"readers": current_user.id}
-                            },
-                            {
-                                "match": {"allCanRead": True}
-                            },
-                            {
-                                "match": {"allCanWrite": True}
-                            }
-                        ],
-                        "minimum_should_match": 1
+    favorite_docs = elastic.search(index="documents", body={
+        "from": (page - 1) * 10,
+        "size": 10,
+        "query": {
+            "bool": {
+                "must": [
+                    {"terms": {"_id": favorites_list}},
+                    {
+                        "bool": {
+                            "should": [
+                                {
+                                    "match": {"writers": current_user.id}
+                                },
+                                {
+                                    "match": {"readers": current_user.id}
+                                },
+                                {
+                                    "match": {"allCanRead": True}
+                                },
+                                {
+                                    "match": {"allCanWrite": True}
+                                }
+                            ],
+                            "minimum_should_match": 1
+                        }
                     }
-                }
-            ],
-            "should": [
-                {"fuzzy": {"title": title}},
-                {"fuzzy": {"createdBy": author}},
-                {"fuzzy": {"description": description}},
-                {"wildcard": {"title": {"value": wild_title}}},
-                {"wildcard": {"description": {"value": wild_description}}},
-                {"wildcard": {"content": {"value": wild_content}}}
-            ]
+                ],
+                "should": [
+                    {"fuzzy": {"title": title}},
+                    {"fuzzy": {"createdBy": author}},
+                    {"fuzzy": {"description": description}},
+                    {"wildcard": {"title": {"value": wild_title}}},
+                    {"wildcard": {"description": {"value": wild_description}}},
+                    {"wildcard": {"content": {"value": wild_content}}}
+                ]
+            }
         }
     })
     favorite_count = favorite_docs['hits']['total']['value']

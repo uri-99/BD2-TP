@@ -5,7 +5,7 @@ from fastapi import APIRouter, status, Request, Response, HTTPException, Depends
 
 from core.auth.models import LoggedUser
 from core.auth.utils import get_current_user, get_password_hash, verify_logged_in
-from core.helpers.db_client import MongoManager
+from core.helpers.db_client import MongoManager, ElasticManager
 from core.schemas.schema import *
 
 router = APIRouter(
@@ -24,6 +24,8 @@ tag_metadata = {
 
 users_db = MongoManager.get_instance().BD2.User
 folders_db = MongoManager.get_instance().BD2.Folder
+elastic = ElasticManager.get_instance()
+
 
 users_page_size = 10
 document_page_size = 10
@@ -125,5 +127,14 @@ def delete_user(username: str, current_user: LoggedUser = Depends(get_current_us
     if db_user is None:
         return
     # TODO: Borrar notas en cascada en elastic
+    elastic.delete_by_query(index="documents", query={
+        "bool": {
+            "must": [
+                {
+                    "match": {"createdBy": db_user['username']}
+                }
+            ]
+        }
+    })
     folders_db.delete_many({'_id': {'$in': db_user['folders']}})
     users_db.delete_one({"_id": db_user['_id']})

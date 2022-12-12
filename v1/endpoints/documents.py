@@ -57,6 +57,9 @@ def get_documents(page: int = 1, title: Union[str, None] = "", author: Union[str
                         "bool": {
                             "should": [
                                 {
+                                    "match": {"createdBy": username}
+                                },
+                                {
                                     "match": {"writers": username}
                                 },
                                 {
@@ -93,17 +96,20 @@ def get_documents(page: int = 1, title: Union[str, None] = "", author: Union[str
         201: {'description': 'Document successfully created'},
         401: {'description': 'User must be logged in'},
         406: {'description': 'User does not exist'},
+        407: {'description': 'Wrong Folder Id Format'},
         403: {'description': 'User has no access to this folder'}
     }
 )
 def create_document(doc: NewDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
     verify_logged_in(current_user)
-    writers = doc.writers
-    if current_user.username not in writers:
-        writers.append(current_user.username)
+    verify_existing_users(doc.writers, doc.readers)
 
-    verify_existing_users(writers, doc.readers)
-    verify_existing_folder(doc.parentFolder, current_user.id)
+    if doc.parentFolder == "":
+        a=0 #nothing
+    elif len(doc.parentFolder) != 24:
+        raise HTTPException(status_code=407, detail="Wrong Folder Id Format")
+    else:
+        verify_existing_folder(doc.parentFolder, current_user.id)
 
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     validId = False
@@ -121,7 +127,7 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
         'lastEditedBy': current_user.username,
         'lastEdited': datetime.now(),
         'readers': doc.readers,
-        'writers': writers,
+        'writers': doc.writers,
         'allCanRead': doc.allCanRead,
         'allCanWrite': doc.allCanWrite,
         'title': doc.title,
@@ -157,7 +163,7 @@ async def get_document(id: str, current_user: LoggedUser = Depends(get_current_u
         if current_user is None:
             raise HTTPException(status_code=403, detail="User has no access to this document")
         else:
-            if current_user.username in elastic_doc["_source"]["readers"] or current_user.username in elastic_doc["_source"]["writers"]:
+            if current_user.username in elastic_doc["_source"]["createdBy"] or current_user.username in elastic_doc["_source"]["readers"] or current_user.username in elastic_doc["_source"]["writers"]:
                 return elastic_doc["_source"]
             else:
                 raise HTTPException(status_code=403, detail="User has no access to this document")
@@ -179,19 +185,16 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-    if current_user.username not in elastic_doc["_source"]["writers"]:
+    if current_user.username not in elastic_doc["_source"]["writers"] and current_user.username not in elastic_doc["_source"]["createdBy"]:
         raise HTTPException(status_code=403, detail="User has no access to this document")
 
-    writers = doc.writers
-    if elastic_doc["_source"]["createdBy"] not in writers:
-        writers.append(elastic_doc["_source"]["createdBy"])
-    verify_existing_users(writers, doc.readers)
+    verify_existing_users(doc.writers, doc.readers)
 
     newDoc = {
         'lastEditedBy': current_user.username,
         'lastEdited': datetime.now(),
         'readers': doc.readers,
-        'writers': writers,
+        'writers': doc.writers,
         'allCanRead': doc.allCanRead,
         'allCanWrite': doc.allCanWrite,
         'title': doc.title,
@@ -227,5 +230,6 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
     else:
         raise HTTPException(status_code=403, detail="User has no permission to delete this document")
 
-    remove_docId_from_mongo_folder(doc["_id"], parentFolderId)
+    if parentFolderId != "":
+        remove_docId_from_mongo_folder(doc["_id"], parentFolderId)
     return {}
