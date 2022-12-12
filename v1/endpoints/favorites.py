@@ -57,25 +57,6 @@ def get_favorites(request: Request, response: Response, page: int = 1,
             "bool": {
                 "must": [
                     {"terms": {"_id": favorites_list}},
-                    {
-                        "bool": {
-                            "should": [
-                                {
-                                    "match": {"writers": current_user.id}
-                                },
-                                {
-                                    "match": {"readers": current_user.id}
-                                },
-                                {
-                                    "match": {"allCanRead": True}
-                                },
-                                {
-                                    "match": {"allCanWrite": True}
-                                }
-                            ],
-                            "minimum_should_match": 1
-                        }
-                    }
                 ],
                 "should": [
                     {"fuzzy": {"title": title}},

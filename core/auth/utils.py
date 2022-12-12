@@ -162,7 +162,7 @@ def user_has_permission(obj: Union[DBDocument, DBFolder], current_user: LoggedUs
             A boolean that tells whether the user has access to the object or not
         """
     user_is_not_none = current_user is not None
-    if user_is_not_none and obj.createdBy == current_user.id:                                               # User is owner
+    if user_is_not_none and obj.createdBy == current_user.username:                                               # User is owner
         return True
     if user_is_not_none and \
             (obj.allCanWrite is True or (len(obj.writers) > 0 and obj.writers[0] == current_user.username)):      # Object is editable by everyone/someone
