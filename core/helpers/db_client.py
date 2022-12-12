@@ -1,3 +1,5 @@
+import os
+
 import pymongo
 from dotenv import dotenv_values
 from elasticsearch import Elasticsearch
@@ -7,10 +9,10 @@ from core.settings import SingletonSettings
 
 secrets = dotenv_values(SingletonSettings.get_instance().Config.env_file)
 
-mongo_pass = secrets['MONGODB_PASS']
-elastic_cloud_id = secrets['ELASTIC_CLASS_ID']
-elastic_user = secrets['ELASTIC_USER']
-elastic_password = secrets['ELASTIC_PASSWORD']
+mongo_pass = os.getenv('MONGODB_PASS')
+elastic_cloud_id = os.getenv('ELASTIC_CLASS_ID')
+elastic_user = os.getenv('ELASTIC_USER')
+elastic_password = os.getenv('ELASTIC_PASSWORD')
 
 
 class MongoManager:

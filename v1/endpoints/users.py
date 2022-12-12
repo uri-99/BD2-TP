@@ -1,13 +1,11 @@
-import json
-from typing import List, Union
+from typing import Union
 
 import bson
-from bson import json_util, ObjectId
+from bson import ObjectId
 from fastapi import APIRouter, status, Request, Response, HTTPException, Depends
 
 from core.auth.models import LoggedUser
 from core.auth.utils import get_current_user, get_password_hash, verify_logged_in
-from core.helpers.converters import oidlist_to_str
 from core.helpers.db_client import MongoManager
 from core.schemas.schema import *
 
@@ -26,7 +24,7 @@ tag_metadata = {
 }
 
 users_db = MongoManager.get_instance().BD2.User
-documents_db = MongoManager.get_instance().BD2.File
+folders_db = MongoManager.get_instance().BD2.Folder
 
 users_page_size = 10
 document_page_size = 10
@@ -54,18 +52,18 @@ async def get_users(request: Request, response: Response,
     user_count = users_db.count_documents({})
     users = list()
     for user in result:
-        users.append({
-            'self': str(request.url.remove_query_params(["page", "username"])) + "/" + str(user['_id']),
-            'id': str(user['_id']),
-            'username': user['username'],
-            'mail': user['mail'],
-            'notes': oidlist_to_str(user['notes']),
-            'folders': oidlist_to_str(user['folders'])
-        })
+        users.append(User(
+            self=str(request.url.remove_query_params(["page", "username"])) + "/" + str(user['_id']),
+            id=str(user['_id']),
+            username=user['username'],
+            mail=user['mail'],
+            notes=user['notes'],
+            folders=user['folders']
+        ))
     response.headers.append("first", str(request.url.remove_query_params(["page", "username"])) + "?page=1")
     response.headers.append("last", str(request.url.remove_query_params(["page", "username"]))
                             + "?page=" + str(int((user_count - 1) / users_page_size) + 1))
-    return json.loads(json_util.dumps(users))
+    return users
 
 
 # TODO: Error checking when post fails
@@ -109,14 +107,14 @@ def get_user(id: str, request: Request):
     result = users_db.find_one({"_id": user_id}, {"password": 0})
     if result is None:
         raise HTTPException(status_code=404, detail="User not found")
-    return json.loads(json_util.dumps({
-        'self': str(request.url),
-        'id': str(result['_id']),
-        'username': result['username'],
-        'mail': result['mail'],
-        'notes': oidlist_to_str(result['notes']),
-        'folders': oidlist_to_str(result['folders'])
-    }))
+    return User(
+        self=str(request.url),
+        id=str(result['_id']),
+        username=result['username'],
+        mail=result['mail'],
+        notes=result['notes'],
+        folders=result['folders']
+    )
 
 
 @router.delete(
@@ -124,20 +122,20 @@ def get_user(id: str, request: Request):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Deleted user'},
-        403: {'description': 'Tried to delete other user account'},
-        404: {'description': 'User not found for id sent'},
+        403: {'description': 'Tried to delete other user account'}
     },
     tags=['users']
 )
 def delete_user(id: str, current_user: LoggedUser = Depends(get_current_user)):
     verify_logged_in(current_user)
     if id != current_user.id:
-        raise HTTPException(status_code=403, detail="Cant delete other users accounts")
+        raise HTTPException(status_code=403, detail="Can't delete other users accounts")
     try:
-        user_id = ObjectId(id)
+        db_user = users_db.find_one({"_id": ObjectId(id)}, {"password": 0})
+        if db_user is None:
+            return
     except bson.errors.InvalidId:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    result = users_db.delete_one({"_id": user_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="User not found")
+        return
+    # TODO: Borrar notas en cascada en elastic
+    folders_db.delete_many({'_id': {'$in': users_db['folders']}})
+    users_db.delete_one({"_id": db_user['_id']})

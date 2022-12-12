@@ -74,13 +74,13 @@ class Folder(BaseModel):
 
 
 class UpdateFolder(BaseModel):
-    title: str
-    description: str
-    content: List[str]
-    writers: List[str]
-    readers: List[str]
-    allCanWrite: Optional[bool] = False
-    allCanRead: Optional[bool] = False
+    title: Optional[str]
+    description: Optional[str]
+    content: Optional[List[str]]
+    writers: Optional[List[str]]
+    readers: Optional[List[str]]
+    allCanWrite: Optional[bool]
+    allCanRead: Optional[bool]
 
 
 class NewFolder(BaseModel):

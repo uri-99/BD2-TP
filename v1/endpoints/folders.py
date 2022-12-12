@@ -1,10 +1,13 @@
 import datetime
 
+import elasticsearch
 from bson.errors import InvalidId
 
 from core.auth.models import LoggedUser
 from core.auth.utils import get_current_user, user_has_permission, verify_logged_in
 from core.helpers.converters import get_parsed_folder
+from core.helpers.db_client import ElasticManager
+from core.models.database import DBFolder
 from . import *
 
 router = APIRouter(
@@ -21,6 +24,8 @@ tag_metadata = {
         'description': 'Operations with document folders'
 }
 
+elastic = ElasticManager.get_instance()
+
 folders_page_size = 10
 folders_db = MongoManager.get_instance().BD2.Folder
 users_db = MongoManager.get_instance().BD2.User
@@ -36,19 +41,32 @@ users_db = MongoManager.get_instance().BD2.User
     }
 )
 def get_folders(request: Request, response: Response, page: int = 1,
-                title: Union[str, None] = None, author: Union[str, None] = None):
+                title: Union[str, None] = None, owner: Union[str, None] = None,
+                current_user: LoggedUser = Depends(get_current_user)):
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
 
     folder_filter = {}
     if title is not None:
         folder_filter["title"] = title
-    if author is not None:
+    if owner is not None:
         try:
-            folder_filter["author"] = ObjectId(author)
+            folder_filter["createdBy"] = owner
         except bson.errors.InvalidId:
             return []
-    result = folders_db.find(folder_filter, {"editors": 0}).skip((page - 1) * folders_page_size).limit(folders_page_size)
+    if current_user is None:
+        folder_filter["$or"] = [
+            {"allCanRead": True},
+            {"allCanWrite": True}
+        ]
+    else:
+        folder_filter["$or"] = [
+            {"allCanRead": True},
+            {"allCanWrite": True},
+            {"readers": current_user.id},
+            {"writers": current_user.id}
+        ]
+    result = folders_db.find(folder_filter).skip((page - 1) * folders_page_size).limit(folders_page_size)
     folder_count = folders_db.count_documents({})
     folders = list()
     for folder in result:
@@ -65,7 +83,7 @@ def get_folders(request: Request, response: Response, page: int = 1,
             writers=folder['writers'],
             readers=folder['readers'],
             allCanWrite=folder['allCanWrite'],
-            allCanRead=folder['allCanWrite'],
+            allCanRead=folder['allCanRead'],
         ))
     response.headers.append("first", str(request.url.remove_query_params(["page"])) + "?page=1")
     response.headers.append("last", str(request.url.remove_query_params(["page"]))
@@ -120,24 +138,40 @@ def create_folder(doc: NewFolder, request: Request, response: Response,
         404: {'description': 'Folder not found for id sent'},
     }
 )
-def get_folder(id: str, request: Request):
-    try:
-        folder = folders_db.find_one({'_id': ObjectId(id)}, {'public': 0})
-    except InvalidId:
+def get_folder(id: str, request: Request, current_user: LoggedUser = Depends(get_current_user)):
+    folder_obj = get_parsed_folder(id, folders_db, None if current_user is None else current_user.id)       # Filtro complejo para que no se devuelva una carpeta con 1000 lectores o escritores
+    if folder_obj is None:
         raise HTTPException(status_code=404, detail='Folder not found')
-    if folder is None:
-        raise HTTPException(status_code=404, detail='Folder not found')
+    folder = DBFolder(
+        id=str(folder_obj['id']),
+        createdBy=folder_obj['createdBy'],
+        lastEditedBy=folder_obj['lastEditedBy'],
+        createdOn=str(folder_obj['createdOn']),
+        lastEdited=str(folder_obj['lastEdited']),
+        title=folder_obj['title'],
+        description=folder_obj['description'],
+        content=folder_obj['content'],
+        writers=folder_obj['writers'],
+        readers=folder_obj['readers'],
+        allCanWrite=folder_obj['allCanWrite'],
+        allCanRead=folder_obj['allCanRead'],
+    )
+    if not user_has_permission(folder, current_user, request.method.title()):
+        raise HTTPException(status_code=403, detail='User has no permission to access this folder')
     return Folder(
         self=str(request.url),
-        id=str(folder['_id']),
-        createdBy=str(folder['createdBy']),
-        lastEditedBy=str(folder['lastEditedBy']),
-        createdOn=str(folder['createdOn']),
-        lastEdited=str(folder['lastEdited']),
-        title=folder['title'],
-        description=folder['description'],
-        content=oidlist_to_str(folder['content']),
-        editors=oidlist_to_str(folder['editors'])
+        id=str(folder.id),
+        createdBy=folder.createdBy,
+        lastEditedBy=folder.lastEditedBy,
+        createdOn=str(folder.createdOn),
+        lastEdited=str(folder.lastEdited),
+        title=folder.title,
+        description=folder.description,
+        content=folder.content,
+        writers=folder.writers,
+        readers=folder.readers,
+        allCanWrite=folder.allCanWrite,
+        allCanRead=folder.allCanRead,
     )
 
 
@@ -146,20 +180,52 @@ def get_folder(id: str, request: Request):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Modified Folder'},
+        400: {'description': 'Invalid param sent'},
         403: {'description': 'User has no permission for attempted action'},
         404: {'description': 'Folder not found'}
     }
 )
-def modify_folder(id: str, folder: UpdateFolder, request: Request,
+def modify_folder(id: str, update_folder: UpdateFolder, request: Request,
                   current_user: LoggedUser = Depends(get_current_user)):
-    folder = get_parsed_folder(id, folders_db, None if current_user is None else current_user.id)
-    if folder is None:
+    folder_obj = get_parsed_folder(id, folders_db, None if current_user is None else current_user.id)
+    if folder_obj is None:
         raise HTTPException(status_code=404, detail="Folder not found")
-    if user_has_permission(folder, current_user, request.method.title()) is False:
-        raise HTTPException(status_code=403, detail="User has no permission to modify this folder")
-    print("Modifico carpeta...")
-    # TODO: Chequeo de que el current user tenga permisos
-    return {}
+    folder = DBFolder(
+        id=str(folder_obj['id']),
+        createdBy=folder_obj['createdBy'],
+        lastEditedBy=folder_obj['lastEditedBy'],
+        createdOn=str(folder_obj['createdOn']),
+        lastEdited=str(folder_obj['lastEdited']),
+        title=folder_obj['title'],
+        description=folder_obj['description'],
+        content=folder_obj['content'],
+        writers=folder_obj['writers'],
+        readers=folder_obj['readers'],
+        allCanWrite=folder_obj['allCanWrite'],
+        allCanRead=folder_obj['allCanRead'],
+    )
+    are_writers = update_folder.writers is not None
+    are_readers = update_folder.readers is not None
+    are_docs = update_folder.content is not None
+    if are_writers and users_exist(update_folder.writers) is False:
+        raise HTTPException(status_code=400, detail='Writer sent does not exist')
+    if are_readers and users_exist(update_folder.readers) is False:
+        raise HTTPException(status_code=400, detail='Reader sent does not exist')
+    if are_docs and is_docs_owner(update_folder.content, current_user) is False:
+        raise HTTPException(status_code=400, detail='Document to include on folder does not exist or User is not owner')
+    folders_db.update_one({"_id": ObjectId(id)}, {
+        "$set": {
+            "lastEditedBy": current_user.id,
+            "lastEdited": datetime.datetime.now(),
+            "title": folder.title if update_folder.title is None else update_folder.title,
+            "description": folder.description if update_folder.description is None else update_folder.description,
+            "content": folder.content if update_folder.content is None else update_folder.content,
+            "writers": folder.writers if update_folder.writers is None else update_folder.writers,
+            "readers": folder.readers if update_folder.readers is None else update_folder.readers,
+            "allCanWrite": folder.allCanWrite if update_folder.allCanWrite is None else update_folder.allCanWrite,
+            "allCanRead": folder.allCanRead if update_folder.allCanRead is None else update_folder.allCanRead,
+        }
+    })
 
 
 @router.delete(
@@ -167,24 +233,52 @@ def modify_folder(id: str, folder: UpdateFolder, request: Request,
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Deleted document'},
-        404: {'description': 'Document not found'}
+        403: {'description': 'User has no permission to delete the folder'}
     }
 )
-def delete_folder(id: str, current_user: LoggedUser = Depends(get_current_user)):
-    # TODO: Chequeo de que el current user tenga permisos
-
-    return {}
+def delete_folder(id: str, request: Request, current_user: LoggedUser = Depends(get_current_user)):
+    folder = get_parsed_folder(id, folders_db, None if current_user is None else current_user.id)
+    if folder is None:
+        return
+    if user_has_permission(folder, current_user, request.method.title()) is False:
+        raise HTTPException(status_code=403, detail="User has no permission to modify this folder")
+    # TODO: Test when more docs are created
+    #for note in folder['content']:
+    #    elastic.update(index="documents", id=note, body={
+    #        'doc': {
+    #            'parentFolder': None
+    #        }
+    #    })
+    folders_db.delete_one({"_id": id})
 
 
 # TODO: Check for more optimized way of doing it (one request for all)
 def users_exist(user_list: List[str]):
     try:
         for user in user_list:
-            if users_db.find_one({'_id': ObjectId(user)}) is None:
+            if users_db.find({'_id': ObjectId(user)}) is None:
                 return False
     except InvalidId:
         return False
+    return True
 
 
 def docs_exist(doc_list: List[str]):
-    return False
+    try:
+        for doc in doc_list:
+            elastic.get(index="documents", id=doc)
+    except elasticsearch.NotFoundError:
+        return False
+    return True
+
+
+def is_docs_owner(doc_list: List[str], user: LoggedUser):
+    try:
+        for doc in doc_list:
+            aux_doc = elastic.get(index="documents", id=doc)['_source']
+            print(aux_doc)
+            if aux_doc['createdBy'] != user.username:
+                return False
+    except elasticsearch.NotFoundError:
+        return False
+    return True

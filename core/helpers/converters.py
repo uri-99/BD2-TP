@@ -71,7 +71,9 @@ def get_parsed_folder(folder_id: str, folder_db, user_id: str):
                     'title': 1,
                     'description': 1,
                     'content': 1,
-                    'readers': readers_filter
+                    'readers': readers_filter,
+                    'allCanRead': 1,
+                    'allCanWrite': 1,
                 }
             }
         ]))[0]
