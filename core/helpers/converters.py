@@ -10,6 +10,13 @@ def oidlist_to_str(oidlist: List[ObjectId]):
     return list_str
 
 
+def strlist_to_oidlist(str_list: List[str]):
+    oid_list = list()
+    for item in str_list:
+        oid_list.append(ObjectId(item))
+    return oid_list
+
+
 def get_parsed_folder(folder_id: str, folder_db, user_username: str):
     try:
         if user_username is None:

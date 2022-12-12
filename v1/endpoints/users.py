@@ -1,10 +1,11 @@
 from typing import Union
 
-from bson import ObjectId
+import pymongo.errors
 from fastapi import APIRouter, status, Request, Response, HTTPException, Depends
 
 from core.auth.models import LoggedUser
 from core.auth.utils import get_current_user, get_password_hash, verify_logged_in
+from core.helpers.converters import strlist_to_oidlist
 from core.helpers.db_client import MongoManager, ElasticManager
 from core.schemas.schema import *
 
@@ -66,23 +67,26 @@ async def get_users(request: Request, response: Response,
     return users
 
 
-# TODO: Error checking when post fails
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
     responses={
         201: {'description': 'User created'},
+        400: {'description': 'Sent invalid value'}
     },
     tags=['users']
 )
 def create_user(new_user: NewUser, request: Request, response: Response):
-    result = users_db.insert_one({
-            'username': new_user.username,
-            'password': get_password_hash(new_user.password),
-            'notes': [],
-            'favorites': [],
-            'folders': []
-    })
+    try:
+        result = users_db.insert_one({
+                'username': new_user.username,
+                'password': get_password_hash(new_user.password),
+                'notes': [],
+                'favorites': [],
+                'folders': []
+        })
+    except pymongo.errors.DuplicateKeyError:
+        raise HTTPException(status_code=400, detail='User already exists with username sent')
     response.headers.append("Location", str(request.url) + "/" + str(result.inserted_id))
     return {}
 
@@ -126,7 +130,6 @@ def delete_user(username: str, current_user: LoggedUser = Depends(get_current_us
     db_user = users_db.find_one({"username": username}, {"password": 0})
     if db_user is None:
         return
-    # TODO: Borrar notas en cascada en elastic
     elastic.delete_by_query(index="documents", query={
         "bool": {
             "must": [
@@ -136,5 +139,5 @@ def delete_user(username: str, current_user: LoggedUser = Depends(get_current_us
             ]
         }
     })
-    folders_db.delete_many({'_id': {'$in': db_user['folders']}})
+    folders_db.delete_many({'_id': {'$in': strlist_to_oidlist(db_user['folders'])}})
     users_db.delete_one({"_id": db_user['_id']})
