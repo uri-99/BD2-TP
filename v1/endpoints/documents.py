@@ -35,7 +35,7 @@ tag_metadata = {
         400: {'description': 'Sent wrong query param'}
     }
 )
-def get_documents(page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = "", current_user: LoggedUser = Depends(get_current_user)):
+def get_documents(request: Request, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = "", current_user: LoggedUser = Depends(get_current_user)):
     wildContent = "*" + content + "*"
     wildTitle = "*" + title + "*"
     wildDescription = "*" + description + "*"
@@ -86,8 +86,16 @@ def get_documents(page: int = 1, title: Union[str, None] = "", author: Union[str
           ]
         }
     }})
-    # print(resp)
-    return resp["hits"]["hits"]
+    toRet = []
+    for document in resp["hits"]["hits"]:
+        self = str(request.url.remove_query_params(["title", "author", "page"])) + "/" + str(document['_id'])
+        onTop = {"self" : self}
+        del document["_index"]
+        document = {**onTop, **document}
+        toRet.append(document)
+
+    # return resp["hits"]["hits"]
+    return toRet
 
 @router.post(
     "",
@@ -151,20 +159,25 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
         403: {'description': 'User has no access to this document'}
     }
 )
-async def get_document(id: str, current_user: LoggedUser = Depends(get_current_user)):
+async def get_document(id: str, request: Request, current_user: LoggedUser = Depends(get_current_user)):
     try:
         elastic_doc = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
+    self = str(request.url.remove_query_params(["title", "author", "page"])) + "/" + str(elastic_doc['_id'])
+    onTop = {"self": self}
+    original_document = elastic_doc["_source"]
+    toRet = {**onTop, **original_document}
+
     if elastic_doc["_source"]["allCanRead"] is True or elastic_doc["_source"]["allCanWrite"] is True:
-        return elastic_doc["_source"]
+        return toRet
     else: #doc is not open to read
         if current_user is None:
             raise HTTPException(status_code=403, detail="User has no access to this document")
         else:
             if current_user.username in elastic_doc["_source"]["createdBy"] or current_user.username in elastic_doc["_source"]["readers"] or current_user.username in elastic_doc["_source"]["writers"]:
-                return elastic_doc["_source"]
+                return toRet
             else:
                 raise HTTPException(status_code=403, detail="User has no access to this document")
 
