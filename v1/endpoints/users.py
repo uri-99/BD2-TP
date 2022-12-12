@@ -1,6 +1,5 @@
 from typing import Union
 
-import bson
 from bson import ObjectId
 from fastapi import APIRouter, status, Request, Response, HTTPException, Depends
 
@@ -58,7 +57,6 @@ async def get_users(request: Request, response: Response,
             self=str(request.url.remove_query_params(["page", "username"])) + "/" + str(user['_id']),
             id=str(user['_id']),
             username=user['username'],
-            mail=user['mail'],
             notes=user['notes'],
             folders=user['folders']
         ))
@@ -80,7 +78,6 @@ async def get_users(request: Request, response: Response,
 def create_user(new_user: NewUser, request: Request, response: Response):
     result = users_db.insert_one({
             'username': new_user.username,
-            'mail': new_user.mail,
             'password': get_password_hash(new_user.password),
             'notes': [],
             'favorites': [],
@@ -91,7 +88,7 @@ def create_user(new_user: NewUser, request: Request, response: Response):
 
 
 @router.get(
-    "/{id}",
+    "/{username}",
     response_model=User,
     status_code=status.HTTP_200_OK,
     responses={
@@ -100,27 +97,21 @@ def create_user(new_user: NewUser, request: Request, response: Response):
     },
     tags=['users']
 )
-def get_user(id: str, request: Request):
-    try:
-        user_id = ObjectId(id)
-    except bson.errors.InvalidId:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    result = users_db.find_one({"_id": user_id}, {"password": 0})
+def get_user(username: str, request: Request):
+    result = users_db.find_one({"username": username}, {"password": 0})
     if result is None:
         raise HTTPException(status_code=404, detail="User not found")
     return User(
         self=str(request.url),
         id=str(result['_id']),
         username=result['username'],
-        mail=result['mail'],
         notes=result['notes'],
         folders=result['folders']
     )
 
 
 @router.delete(
-    "/{id}",
+    "/{username}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Deleted user'},
@@ -128,15 +119,12 @@ def get_user(id: str, request: Request):
     },
     tags=['users']
 )
-def delete_user(id: str, current_user: LoggedUser = Depends(get_current_user)):
+def delete_user(username: str, current_user: LoggedUser = Depends(get_current_user)):
     verify_logged_in(current_user)
-    if id != current_user.id:
+    if username != current_user.username:
         raise HTTPException(status_code=403, detail="Can't delete other users accounts")
-    try:
-        db_user = users_db.find_one({"_id": ObjectId(id)}, {"password": 0})
-        if db_user is None:
-            return
-    except bson.errors.InvalidId:
+    db_user = users_db.find_one({"username": username}, {"password": 0})
+    if db_user is None:
         return
     # TODO: Borrar notas en cascada en elastic
     elastic.delete_by_query(index="documents", query={

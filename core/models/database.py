@@ -4,9 +4,8 @@ from . import *
 class User(BaseModel):
     _id: str
     username: str
-    mail: str
     notes: List[str]
-    favourites: List[str]
+    favorites: List[str]
 
 
 class DBDocument(BaseModel):

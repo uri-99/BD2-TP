@@ -81,8 +81,7 @@ ELASTIC_PASSWORD=<contraseña_de_elastic>
 ELASTIC_CLASS_ID=<id_de_la_clase>
 ```
 
-
-Como mención, la clave de Mongo es un <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">string de conexión</a> que se puede obtener en esta base de datos.
+Como mención, la clave de Mongo es un <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">string de conexión</a> que se puede obtener en dicha base de datos.
 
 ### Programas necesarios
 

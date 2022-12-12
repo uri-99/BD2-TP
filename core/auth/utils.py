@@ -21,7 +21,6 @@ users_db = MongoManager.get_instance().BD2.User
 folders_db = MongoManager.get_instance().BD2.Folder
 
 
-
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()
     if expires_delta:
@@ -128,6 +127,7 @@ def add_newDocId_to_mongo_folder(newDocId, parentFolderId):
         newContent.append(newDocId)
         folders_db.update_one({'_id': ObjectId(parentFolderId)}, {"$set": {"content": newContent}})
 
+
 def remove_docId_from_mongo_folder(docId, parentFolderId):
     folder = folders_db.find_one({'_id': ObjectId(parentFolderId)})
     if folder is None:
@@ -142,8 +142,6 @@ def remove_docId_from_mongo_folder(docId, parentFolderId):
     except:
         raise HTTPException(status_code=500, detail="Server error, folder doesn't contain document Id. This is a deprecated version folder")
     folders_db.update_one({'_id': ObjectId(parentFolderId)}, {"$set": {"content": newContent}})
-
-
 
 
 def user_has_permission(obj: Union[DBDocument, DBFolder], current_user: LoggedUser, request_method: str):
@@ -167,9 +165,9 @@ def user_has_permission(obj: Union[DBDocument, DBFolder], current_user: LoggedUs
     if user_is_not_none and obj.createdBy == current_user.id:                                               # User is owner
         return True
     if user_is_not_none and \
-            (obj.allCanWrite is True or (len(obj.writers) > 0 and obj.writers[0] == current_user.id)):      # Object is editable by everyone/someone
+            (obj.allCanWrite is True or (len(obj.writers) > 0 and obj.writers[0] == current_user.username)):      # Object is editable by everyone/someone
         return request_method.lower() != 'delete'
     if obj.allCanRead is True or \
-            (user_is_not_none and (len(obj.readers) > 0 and obj.readers[0] == current_user.id)):            # Object is readable by everyone/someone
+            (user_is_not_none and (len(obj.readers) > 0 and obj.readers[0] == current_user.username)):            # Object is readable by everyone/someone
         return request_method.lower() == 'get'
     return False

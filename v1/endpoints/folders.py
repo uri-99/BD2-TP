@@ -63,8 +63,8 @@ def get_folders(request: Request, response: Response, page: int = 1,
         folder_filter["$or"] = [
             {"allCanRead": True},
             {"allCanWrite": True},
-            {"readers": current_user.id},
-            {"writers": current_user.id}
+            {"readers": current_user.username},
+            {"writers": current_user.username}
         ]
     result = folders_db.find(folder_filter).skip((page - 1) * folders_page_size).limit(folders_page_size)
     folder_count = folders_db.count_documents({})
@@ -73,8 +73,8 @@ def get_folders(request: Request, response: Response, page: int = 1,
         folders.append(Folder(
             self=str(request.url.remove_query_params(["title", "author", "page"])) + "/" + str(folder['_id']),
             id=str(folder['_id']),
-            createdBy=str(folder['createdBy']),
-            lastEditedBy=str(folder['lastEditedBy']),
+            createdBy=folder['createdBy'],
+            lastEditedBy=folder['lastEditedBy'],
             createdOn=str(folder['createdOn']),
             lastEdited=str(folder['lastEdited']),
             title=folder['title'],
@@ -113,8 +113,8 @@ def create_folder(doc: NewFolder, request: Request, response: Response,
         raise HTTPException(status_code=400, detail='Document to include on folder does not exist')
     now = datetime.datetime.now()
     result = folders_db.insert_one({
-        'createdBy': current_user.id,
-        'lastEditedBy': current_user.id,
+        'createdBy': current_user.username,
+        'lastEditedBy': current_user.username,
         'createdOn': now,
         'lastEdited': now,
         'title': doc.title,
@@ -144,7 +144,7 @@ def create_folder(doc: NewFolder, request: Request, response: Response,
     }
 )
 def get_folder(id: str, request: Request, current_user: LoggedUser = Depends(get_current_user)):
-    folder_obj = get_parsed_folder(id, folders_db, None if current_user is None else current_user.id)       # Filtro complejo para que no se devuelva una carpeta con 1000 lectores o escritores
+    folder_obj = get_parsed_folder(id, folders_db, None if current_user is None else current_user.username)       # Filtro complejo para que no se devuelva una carpeta con 1000 lectores o escritores
     if folder_obj is None:
         raise HTTPException(status_code=404, detail='Folder not found')
     folder = DBFolder(
@@ -190,9 +190,9 @@ def get_folder(id: str, request: Request, current_user: LoggedUser = Depends(get
         404: {'description': 'Folder not found'}
     }
 )
-def modify_folder(id: str, update_folder: UpdateFolder, request: Request,
+def modify_folder(id: str, update_folder: UpdateFolder,
                   current_user: LoggedUser = Depends(get_current_user)):
-    folder_obj = get_parsed_folder(id, folders_db, None if current_user is None else current_user.id)
+    folder_obj = get_parsed_folder(id, folders_db, None if current_user is None else current_user.username)
     if folder_obj is None:
         raise HTTPException(status_code=404, detail="Folder not found")
     folder = DBFolder(
@@ -220,7 +220,7 @@ def modify_folder(id: str, update_folder: UpdateFolder, request: Request,
         raise HTTPException(status_code=400, detail='Document to include on folder does not exist or User is not owner')
     folders_db.update_one({"_id": ObjectId(id)}, {
         "$set": {
-            "lastEditedBy": current_user.id,
+            "lastEditedBy": current_user.username,
             "lastEdited": datetime.datetime.now(),
             "title": folder.title if update_folder.title is None else update_folder.title,
             "description": folder.description if update_folder.description is None else update_folder.description,
@@ -242,7 +242,7 @@ def modify_folder(id: str, update_folder: UpdateFolder, request: Request,
     }
 )
 def delete_folder(id: str, request: Request, current_user: LoggedUser = Depends(get_current_user)):
-    folder = get_parsed_folder(id, folders_db, None if current_user is None else current_user.id)
+    folder = get_parsed_folder(id, folders_db, None if current_user is None else current_user.username)
     if folder is None:
         return
     if user_has_permission(folder, current_user, request.method.title()) is False:
@@ -261,7 +261,7 @@ def delete_folder(id: str, request: Request, current_user: LoggedUser = Depends(
 def users_exist(user_list: List[str]):
     try:
         for user in user_list:
-            if users_db.find({'_id': ObjectId(user)}) is None:
+            if users_db.find_one({'username': user}) is None:
                 return False
     except InvalidId:
         return False
