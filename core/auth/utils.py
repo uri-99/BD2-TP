@@ -119,13 +119,14 @@ def verify_existing_folder(folderId, userId):
 
 
 def add_newDocId_to_mongo_folder(newDocId, parentFolderId):
-    folder = folders_db.find_one({'_id': ObjectId(parentFolderId)})
-    if folder is None:
-        raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(parentFolderId))
+    if parentFolderId != "":
+        folder = folders_db.find_one({'_id': ObjectId(parentFolderId)})
+        if folder is None:
+            raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(parentFolderId))
 
-    newContent = folder["content"]
-    newContent.append(newDocId)
-    folders_db.update_one({'_id': ObjectId(parentFolderId)}, {"$set": {"content": newContent}})
+        newContent = folder["content"]
+        newContent.append(newDocId)
+        folders_db.update_one({'_id': ObjectId(parentFolderId)}, {"$set": {"content": newContent}})
 
 def remove_docId_from_mongo_folder(docId, parentFolderId):
     folder = folders_db.find_one({'_id': ObjectId(parentFolderId)})

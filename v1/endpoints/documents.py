@@ -93,6 +93,7 @@ def get_documents(page: int = 1, title: Union[str, None] = "", author: Union[str
         201: {'description': 'Document successfully created'},
         401: {'description': 'User must be logged in'},
         406: {'description': 'User does not exist'},
+        407: {'description': 'Wrong Folder Id Format'},
         403: {'description': 'User has no access to this folder'}
     }
 )
@@ -103,7 +104,12 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
         writers.append(current_user.username)
 
     verify_existing_users(writers, doc.readers)
-    verify_existing_folder(doc.parentFolder, current_user.id)
+    if doc.parentFolder == "":
+        a=0 #nothing
+    elif len(doc.parentFolder) != 24:
+        raise HTTPException(status_code=407, detail="Wrong Folder Id Format")
+    else:
+        verify_existing_folder(doc.parentFolder, current_user.id)
 
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     validId = False
