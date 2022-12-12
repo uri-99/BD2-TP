@@ -233,5 +233,6 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
     else:
         raise HTTPException(status_code=403, detail="User has no permission to delete this document")
 
-    remove_docId_from_mongo_folder(doc["_id"], parentFolderId)
+    if parentFolderId != "":
+        remove_docId_from_mongo_folder(doc["_id"], parentFolderId)
     return {}
