@@ -193,7 +193,8 @@ def get_folder(id: str, request: Request, current_user: LoggedUser = Depends(get
 )
 def modify_folder(id: str, update_folder: UpdateFolder,
                   current_user: LoggedUser = Depends(get_current_user)):
-    folder_obj = get_parsed_folder(id, folders_db, None if current_user is None else current_user.username)
+    verify_logged_in(current_user)
+    folder_obj = get_parsed_folder(id, folders_db, current_user.username)
     if folder_obj is None:
         raise HTTPException(status_code=404, detail="Folder not found")
     folder = DBFolder(
@@ -243,18 +244,21 @@ def modify_folder(id: str, update_folder: UpdateFolder,
     }
 )
 def delete_folder(id: str, request: Request, current_user: LoggedUser = Depends(get_current_user)):
-    folder = get_parsed_folder(id, folders_db, None if current_user is None else current_user.username)
+    verify_logged_in(current_user)
+    folder = get_parsed_folder(id, folders_db, current_user.username)
     if folder is None:
         return
     if user_has_permission(folder, current_user, request.method.title()) is False:
         raise HTTPException(status_code=403, detail="User has no permission to modify this folder")
-    # TODO: Test when more docs are created
-    #for note in folder['content']:
-    #    elastic.update(index="documents", id=note, body={
-    #        'doc': {
-    #            'parentFolder': None
-    #        }
-    #    })
+    elastic.delete_by_query(index="documents", query={
+        "bool": {
+            "must": [
+                {
+                    "match": {"createdBy": folder['content']}
+                }
+            ]
+        }
+    })
     folders_db.delete_one({"_id": id})
 
 

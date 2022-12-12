@@ -95,7 +95,8 @@ def authenticate_user(username: str, password: str):
 
 def verify_logged_in(current_user):
     if current_user is None:
-        raise HTTPException(status_code=401, detail="User must be logged in")
+        raise HTTPException(status_code=401, detail="User must be logged in to perform this action")
+
 
 def verify_existing_users(writers, readers):
     if writers is not None:
@@ -106,6 +107,7 @@ def verify_existing_users(writers, readers):
         for reader in readers:
             if users_db.find_one({'username': reader}) is None:
                 raise HTTPException(status_code=406, detail="User '{}' does not exist".format(reader))
+
 
 def verify_existing_folder(folderId, userId):
     folder = folders_db.find_one({'_id': ObjectId(folderId)})

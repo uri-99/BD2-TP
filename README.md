@@ -35,6 +35,9 @@ Los miembros del grupo <b>Los Notilokos</b> somos:
             <li><a href="#permisos">Permisos</a></li>
         </ul>
     </li>
+    <li>
+        <a href="#deploy">Deploy</a>
+    </li>
   </ol>
 
 
@@ -103,19 +106,15 @@ $ pip install uvicorn
 
 ### Dependencias
 
-Antes de correr el proyecto, hay que instalar una serie de dependencias. Todas se instalan corriendo la siguiente serie de comandos:
+Antes de correr el proyecto, hay que instalar una serie de dependencias necesarias para la API, bases de datos y funciones usadas internamente.
+
+Todas estas se encuentran dentro del archivo `requirements.txt` que está en la carpeta raíz del proyecto, por lo que para instalar todas las dependencias basta con correr:
 
 ```sh
-$ pip install fastapi
-$ pip install pymongo
-$ pip install elasticsearch
-$ pip install passlib
-$ pip install "python-jose[cryptography]"
-$ pip install python multipart
-$ pip install bcrypt
+$ pip install -r requirements.txt
 ```
 
-
+<b><h4>Tip extra:</h4></b> Si en un futuro se desea deployear la aplicación en alguna plataforma como <a href="https://www.deta.sh/">Deta</a>, este archivo también servirá para indicarle al servidor remoto que dependencias debe instalar previo a correr la aplicación.
 
 ## Uso
 
@@ -151,6 +150,12 @@ Igualmente, aunque el usuario haya iniciado sesión, hay una serie de acciones q
 - Lectura y modificación de archivos que son privados o sólo compartidos a algún grupo de usuarios, en el que no se encuentra el usuario activo.
 - Borrado de notas, carpetas y cuentas de otros usuarios.
 - Modificaciones de la lista de favoritos de otros usuarios.
+
+
+
+## Deploy
+
+La última versión de esta API se encuentra deployeada en la url https://u9usr1.deta.dev, conectada a bases de datos propias con data de ejemplo, para poder interactuar con ella y ver su funcionamiento. De igual manera, el Swagger se encuentra en https://u9usr1.deta.dev/docs donde se puede ver la documentación y llamar a los métodos HTTP de una forma más sencilla.
 
 [fastapi-logo]: https://img.shields.io/badge/FastAPI-000000?logo=fastapi
 [fastapi-url]: https://fastapi.tiangolo.com/
