@@ -29,6 +29,7 @@ class NewDocument(BaseModel):
     writers: List[str]
     allCanRead: bool
     allCanWrite: bool
+    parentFolder: str
 
 
 class UpdateDocument(BaseModel):

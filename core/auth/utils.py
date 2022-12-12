@@ -17,6 +17,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 load_dotenv(SingletonSettings.get_instance().Config.env_file)
 jwt_key = os.getenv('JWT_KEY')
 
+users_db = MongoManager.get_instance().BD2.User
+folders_db = MongoManager.get_instance().BD2.Folder
+
+
 
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()
@@ -93,6 +97,52 @@ def authenticate_user(username: str, password: str):
 def verify_logged_in(current_user):
     if current_user is None:
         raise HTTPException(status_code=401, detail="User must be logged in")
+
+def verify_existing_users(writers, readers):
+    for writer in writers:
+        if users_db.find_one({'username': writer}) is None:
+            raise HTTPException(status_code=406, detail="User '{}' does not exist".format(writer))
+    for reader in readers:
+        if users_db.find_one({'username': reader}) is None:
+            raise HTTPException(status_code=406, detail="User '{}' does not exist".format(reader))
+
+def verify_existing_folder(folderId, userId):
+    folder = folders_db.find_one({'_id': ObjectId(folderId)})
+    if folder is None:
+        raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(folderId))
+    if folder["createdBy"] != userId:
+        if folder["allCanWrite"] is False:
+            if userId not in folder["writers"]:
+                print(userId)
+                print(folder["writers"])
+                raise HTTPException(status_code=403, detail="User has no access to this document")
+
+
+def add_newDocId_to_mongo_folder(newDocId, parentFolderId):
+    folder = folders_db.find_one({'_id': ObjectId(parentFolderId)})
+    if folder is None:
+        raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(parentFolderId))
+
+    newContent = folder["content"]
+    newContent.append(newDocId)
+    folders_db.update_one({'_id': ObjectId(parentFolderId)}, {"$set": {"content": newContent}})
+
+def remove_docId_from_mongo_folder(docId, parentFolderId):
+    folder = folders_db.find_one({'_id': ObjectId(parentFolderId)})
+    if folder is None:
+        raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(parentFolderId))
+
+    newContent = folder["content"]
+    print("\n\n---------------")
+    print(newContent)
+    print(docId)
+    try:
+        newContent.remove(docId)
+    except:
+        raise HTTPException(status_code=500, detail="Server error, folder doesn't contain document Id. This is a deprecated version folder")
+    folders_db.update_one({'_id': ObjectId(parentFolderId)}, {"$set": {"content": newContent}})
+
+
 
 
 def user_has_permission(obj: Union[DBDocument, DBFolder], current_user: LoggedUser, request_method: str):

@@ -6,7 +6,8 @@ from datetime import datetime
 from fastapi import Request, Response, Header
 
 from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user, verify_logged_in
+from core.auth.utils import get_current_user, verify_logged_in, verify_existing_users, verify_existing_folder, \
+    add_newDocId_to_mongo_folder, remove_docId_from_mongo_folder
 
 from . import *
 from core.helpers.db_client import ElasticManager
@@ -46,37 +47,41 @@ def get_documents(page: int = 1, title: Union[str, None] = "", author: Union[str
     else:
         print("logged in, {}".format(current_user.username))
         username = current_user.username
-    resp = elastic.search(index="documents", query={
-        "bool": {
-            "must": [
-                {
-                    "bool": {
-                        "should": [
-                            {
-                                "match": {"writers": username}
-                            },
-                            {
-                                "match": {"readers": username}
-                            },
-                            {
-                                "match": {"allCanRead": True}
-                            },
-                            {
-                                "match": {"allCanWrite": True}
-                            }
-                        ],
-                        "minimum_should_match": 1
+    resp = elastic.search(index="documents", body={
+        "from": (page-1)*10,
+        "size": 10,
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "bool": {
+                            "should": [
+                                {
+                                    "match": {"writers": username}
+                                },
+                                {
+                                    "match": {"readers": username}
+                                },
+                                {
+                                    "match": {"allCanRead": True}
+                                },
+                                {
+                                    "match": {"allCanWrite": True}
+                                }
+                            ],
+                            "minimum_should_match": 1
+                        }
                     }
-                }
-            ],
-      "should": [
-        { "fuzzy": {"title": title}},
-        { "fuzzy": {"createdBy": author}},
-        { "fuzzy": {"description": description}},
-        { "wildcard": {"title": {"value": wildTitle}}},
-        { "wildcard": {"description": {"value": wildDescription}}},
-        { "wildcard" : {"content": {"value": wildContent}}}
-      ]
+                ],
+          "should": [
+            { "fuzzy": {"title": title}},
+            { "fuzzy": {"createdBy": author}},
+            { "fuzzy": {"description": description}},
+            { "wildcard": {"title": {"value": wildTitle}}},
+            { "wildcard": {"description": {"value": wildDescription}}},
+            { "wildcard" : {"content": {"value": wildContent}}}
+          ]
+        }
     }})
     # print(resp)
     return resp["hits"]["hits"]
@@ -86,7 +91,9 @@ def get_documents(page: int = 1, title: Union[str, None] = "", author: Union[str
     status_code=status.HTTP_201_CREATED,
     responses={
         201: {'description': 'Document successfully created'},
-        401: {'description': 'User must be logged in'}
+        401: {'description': 'User must be logged in'},
+        406: {'description': 'User does not exist'},
+        403: {'description': 'User has no access to this folder'}
     }
 )
 def create_document(doc: NewDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
@@ -94,6 +101,9 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
     writers = doc.writers
     if current_user.username not in writers:
         writers.append(current_user.username)
+
+    verify_existing_users(writers, doc.readers)
+    verify_existing_folder(doc.parentFolder, current_user.id)
 
     new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
     validId = False
@@ -117,8 +127,10 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
         'title': doc.title,
         'description': doc.description,
         'content': doc.content,
+        'parentFolder': doc.parentFolder
     }
     resp = elastic.index(index="documents", id=new_doc_id, document=document)
+    add_newDocId_to_mongo_folder(new_doc_id, doc.parentFolder)
     response.headers.append("Location", request.url._url + "/" + resp['_id'])
     return {}
 
@@ -130,6 +142,7 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
     responses={
         200: {'description': 'Found document'},
         404: {'description': 'Document not found for id sent'},
+        403: {'description': 'User has no access to this document'}
     }
 )
 async def get_document(id: str, current_user: LoggedUser = Depends(get_current_user)):
@@ -172,6 +185,7 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
     writers = doc.writers
     if elastic_doc["_source"]["createdBy"] not in writers:
         writers.append(elastic_doc["_source"]["createdBy"])
+    verify_existing_users(writers, doc.readers)
 
     newDoc = {
         'lastEditedBy': current_user.username,
@@ -205,11 +219,13 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
         doc = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
+    parentFolderId = doc["_source"]["parentFolder"]
+    print("parent:{}".format(parentFolderId))
 
-    print(doc["_source"]["writers"])
-    print(current_user.username)
     if current_user.username == doc["_source"]["createdBy"]:
         resp = elastic.delete(index="documents", id=id)
     else:
         raise HTTPException(status_code=403, detail="User has no permission to delete this document")
+
+    remove_docId_from_mongo_folder(doc["_id"], parentFolderId)
     return {}
