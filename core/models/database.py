@@ -25,9 +25,9 @@ class DBDocument(BaseModel):
 
 
 class DBFolder(BaseModel):
-    _id: str
+    id: str
     createdBy: str
-    created: str  # Deberia ser una fecha
+    createdOn: str  # Deberia ser una fecha
     lastEditedBy: str
     lastEdited: str  # Deberia ser una fecha
     title: str
