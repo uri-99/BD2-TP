@@ -64,7 +64,8 @@ def get_folders(request: Request, response: Response, page: int = 1,
             {"allCanRead": True},
             {"allCanWrite": True},
             {"readers": current_user.username},
-            {"writers": current_user.username}
+            {"writers": current_user.username},
+            {"createdBy": current_user.username}
         ]
     result = folders_db.find(folder_filter).skip((page - 1) * folders_page_size).limit(folders_page_size)
     folder_count = folders_db.count_documents({})
@@ -119,7 +120,7 @@ def create_folder(doc: NewFolder, request: Request, response: Response,
         'lastEdited': now,
         'title': doc.title,
         'description': doc.description,
-        'content': doc.content,
+        'content': doc.content if are_docs else [],
         'writers': doc.writers if are_writers else [],
         'allCanWrite': doc.allCanWrite if doc.allCanWrite is not None else False,
         'readers': doc.readers if are_readers else [],
@@ -180,7 +181,7 @@ def get_folder(id: str, request: Request, current_user: LoggedUser = Depends(get
     )
 
 
-@router.put(
+@router.patch(
     "/{id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
@@ -259,13 +260,7 @@ def delete_folder(id: str, request: Request, current_user: LoggedUser = Depends(
 
 # TODO: Check for more optimized way of doing it (one request for all)
 def users_exist(user_list: List[str]):
-    try:
-        for user in user_list:
-            if users_db.find_one({'username': user}) is None:
-                return False
-    except InvalidId:
-        return False
-    return True
+    return len(list(users_db.find({'username': {'$in': user_list}}))) == len(user_list)
 
 
 def docs_exist(doc_list: List[str]):
