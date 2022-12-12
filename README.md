@@ -104,6 +104,7 @@ $ pip install uvicorn
 Antes de correr el proyecto, hay que instalar una serie de dependencias. Todas se instalan corriendo la siguiente serie de comandos:
 
 ```sh
+$ pip install fastapi
 $ pip install pymongo
 $ pip install elasticsearch
 $ pip install passlib
