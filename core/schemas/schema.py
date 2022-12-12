@@ -29,13 +29,13 @@ class NewDocument(BaseModel):
 
 
 class UpdateDocument(BaseModel):
-    readers: List[str]
-    writers: List[str]
-    allCanRead: bool
-    allCanWrite: bool
-    title: str
-    description: str
-    content: List[str]
+    readers: Optional[List[str]]
+    writers: Optional[List[str]]
+    allCanRead: Optional[bool]
+    allCanWrite: Optional[bool]
+    title: Optional[str]
+    description: Optional[str]
+    content: Optional[List[str]]
 
 
 class Document(BaseModel):

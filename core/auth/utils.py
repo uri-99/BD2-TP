@@ -98,12 +98,14 @@ def verify_logged_in(current_user):
         raise HTTPException(status_code=401, detail="User must be logged in")
 
 def verify_existing_users(writers, readers):
-    for writer in writers:
-        if users_db.find_one({'username': writer}) is None:
-            raise HTTPException(status_code=406, detail="User '{}' does not exist".format(writer))
-    for reader in readers:
-        if users_db.find_one({'username': reader}) is None:
-            raise HTTPException(status_code=406, detail="User '{}' does not exist".format(reader))
+    if writers is not None:
+        for writer in writers:
+            if users_db.find_one({'username': writer}) is None:
+                raise HTTPException(status_code=406, detail="User '{}' does not exist".format(writer))
+    if readers is not None:
+        for reader in readers:
+            if users_db.find_one({'username': reader}) is None:
+                raise HTTPException(status_code=406, detail="User '{}' does not exist".format(reader))
 
 def verify_existing_folder(folderId, userId):
     folder = folders_db.find_one({'_id': ObjectId(folderId)})
@@ -171,3 +173,36 @@ def user_has_permission(obj: Union[DBDocument, DBFolder], current_user: LoggedUs
             (user_is_not_none and (len(obj.readers) > 0 and obj.readers[0] == current_user.username)):            # Object is readable by everyone/someone
         return request_method.lower() == 'get'
     return False
+
+def verify_patch_content(body_request):
+    try:
+        del body_request['readers']
+    except:
+        a=0 #nothing
+    try:
+        del body_request['writers']
+    except:
+        a=0 #nothing
+    try:
+        del body_request['allCanRead']
+    except:
+        a=0 #nothing
+    try:
+        del body_request['allCanWrite']
+    except:
+        a=0 #nothing
+    try:
+        del body_request['description']
+    except:
+        a=0 #nothing
+    try:
+        del body_request['content']
+    except:
+        a=0 #nothing
+    try:
+        del body_request['title']
+    except:
+        a=0 #nothing
+
+    if len(body_request) != 0:
+        raise HTTPException(status_code=405, detail="Wrong Patch format, {} unacceptable".format(body_request))

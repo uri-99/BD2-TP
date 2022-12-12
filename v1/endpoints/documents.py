@@ -7,7 +7,7 @@ from fastapi import Request, Response, Header
 
 from core.auth.models import LoggedUser
 from core.auth.utils import get_current_user, verify_logged_in, verify_existing_users, verify_existing_folder, \
-    add_newDocId_to_mongo_folder, remove_docId_from_mongo_folder
+    add_newDocId_to_mongo_folder, remove_docId_from_mongo_folder, verify_patch_content
 
 from . import *
 from core.helpers.db_client import ElasticManager
@@ -169,16 +169,17 @@ async def get_document(id: str, current_user: LoggedUser = Depends(get_current_u
                 raise HTTPException(status_code=403, detail="User has no access to this document")
 
 
-@router.put(
+@router.patch(
     "/{id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Modified document'},
         404: {'description': 'Document not found'},
-        403: {'description': 'User has no access to this document'}
+        403: {'description': 'User has no access to this document'},
+        405: {'description': 'Wrong Patch format'}
     }
 )
-def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
+async def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
     verify_logged_in(current_user)
     try:
         elastic_doc = elastic.get(index="documents", id=id)
@@ -190,16 +191,20 @@ def modify_document(id: str, doc: UpdateDocument, request: Request, response: Re
 
     verify_existing_users(doc.writers, doc.readers)
 
+    body_request = await request.json()
+    verify_patch_content(body_request)
+
+
     newDoc = {
         'lastEditedBy': current_user.username,
         'lastEdited': datetime.now(),
-        'readers': doc.readers,
-        'writers': doc.writers,
-        'allCanRead': doc.allCanRead,
-        'allCanWrite': doc.allCanWrite,
-        'title': doc.title,
-        'description': doc.description,
-        'content': doc.content,
+        "readers": elastic_doc["_source"]["readers"] if doc.readers is None else doc.readers,
+        "writers": elastic_doc["_source"]["writers"] if doc.writers is None else doc.writers,
+        "allCanRead": elastic_doc["_source"]["allCanRead"] if doc.allCanRead is None else doc.allCanRead,
+        "allCanWrite": elastic_doc["_source"]["allCanWrite"] if doc.allCanWrite is None else doc.allCanWrite,
+        "title": elastic_doc["_source"]["title"] if doc.title is None else doc.title,
+        "description": elastic_doc["_source"]["description"] if doc.description is None else doc.description,
+        "content": elastic_doc["_source"]["content"] if doc.content is None else doc.content,
     }
     resp = elastic.update(index="documents", id=id, doc=newDoc)
     response.headers.append("Location", request.url._url)
