@@ -1,13 +1,12 @@
 import os
 
 import pymongo
-from dotenv import dotenv_values
+from dotenv import dotenv_values, load_dotenv
 from elasticsearch import Elasticsearch
 
 from core.settings import SingletonSettings
 
-
-secrets = dotenv_values(SingletonSettings.get_instance().Config.env_file)
+load_dotenv(SingletonSettings.get_instance().Config.env_file)
 
 mongo_pass = os.getenv('MONGODB_PASS')
 elastic_cloud_id = os.getenv('ELASTIC_CLASS_ID')
@@ -44,7 +43,7 @@ class ElasticManager:
         if ElasticManager.__instance is not None:
             raise Exception("This class is a singleton!")
         else:
-            client = Elasticsearch( # Create the client instance
+            client = Elasticsearch(  # Create the client instance
                 cloud_id=elastic_cloud_id,
                 basic_auth=(elastic_user, elastic_password)
             )

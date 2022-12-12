@@ -125,6 +125,11 @@ def create_folder(doc: NewFolder, request: Request, response: Response,
         'readers': doc.readers if are_readers else [],
         'allCanRead': doc.allCanRead if doc.allCanRead is not None else False
     })
+    users_db.update_one({"_id": ObjectId(current_user.id)}, {
+        "$addToSet": {
+            "folders": str(result.inserted_id)
+        }
+    })
     response.headers.append("Location", str(request.url) + "/" + str(result.inserted_id))
     return {}
 

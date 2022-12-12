@@ -59,7 +59,7 @@ Se expone una API para los distintos pedidos del usuario, donde se puede usar el
 
 La API del proyecto se hizo usando <a href="https://fastapi.tiangolo.com/">FastAPI</a>, ya que es una tecnología fácil de usar y con mucha documentación disponible para el proceso de desarrollo, desde el primer endpoint local hasta el deploy. A su vez, nos permite generar el <a href="https://swagger.io/">Swagger</a> como documentación y primera interfaz para interactuar con la API.
 
-Por otro lado, para guardar los datos de la aplicación se utilizó la técnica de persistencia políglota, donde se eligieron como bases de datos a usar <a href="https://www.mongodb.com/">FastAPI</a> y <a href="https://www.elastic.co/elasticsearch/">Elasticsearch</a>. La primera, para el guardado de usuarios y carpetas, cuyo formato puede cambiar a futuro, mientras que las notas se guardan en Elasticsearch para agilizar la búsqueda de estas, que es la principal acción que realizarán los usuarios.
+Por otro lado, para guardar los datos de la aplicación se utilizó la técnica de persistencia políglota, donde se eligieron como bases de datos a usar <a href="https://www.mongodb.com/">MongoDB</a> y <a href="https://www.elastic.co/elasticsearch/">Elasticsearch</a>. La primera, para el guardado de usuarios y carpetas, cuyo formato puede cambiar a futuro, mientras que las notas se guardan en Elasticsearch para agilizar la búsqueda de estas, que es la principal acción que realizarán los usuarios.
 
 Por último, para la autenticación de los usuarios usamos <a href="https://jwt.io/">JSON Web Tokens</a>, o JWT para abreviar, donde un usuario se autentica en primera instancia y se le devuelve un token que usará para autenticarse en los siguientes pedidos.
 
@@ -80,6 +80,9 @@ ELASTIC_USER=<usuario_de_elastic>
 ELASTIC_PASSWORD=<contraseña_de_elastic>
 ELASTIC_CLASS_ID=<id_de_la_clase>
 ```
+
+
+Como mención, la clave de Mongo es un <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">string de conexión</a> que se puede obtener en esta base de datos.
 
 ### Programas necesarios
 
