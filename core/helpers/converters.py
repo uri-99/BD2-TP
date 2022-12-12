@@ -10,10 +10,10 @@ def oidlist_to_str(oidlist: List[ObjectId]):
     return list_str
 
 
-def get_parsed_folder(folder_id: str, folder_db, user_id: str):
+def get_parsed_folder(folder_id: str, folder_db, user_username: str):
     try:
-        if user_id is None:
-            return folder_db.find_one(
+        if user_username is None:
+            return_folder = folder_db.find_one(
                 {
                     '_id': ObjectId(folder_id)
                 },
@@ -24,21 +24,22 @@ def get_parsed_folder(folder_id: str, folder_db, user_id: str):
                     'createdOn': 1,
                     'lastEditedBy': 1,
                     'lastEdited': 1,
-                    'writers': 1,
                     'title': 1,
                     'description': 1,
                     'content': 1,
-                    'readers': 1,
                     'allCanRead': 1,
                     'allCanWrite': 1
                 }
             )
+            return_folder['writers'] = []
+            return_folder['readers'] = []
+            return return_folder
         writers_filter = {
             '$filter': {
                 'input': '$writers',
                 'as': 'writers',
                 'cond': {
-                    '$eq': [user_id, '$$writers']
+                    '$eq': [user_username, '$$writers']
                 }
             }
         }
@@ -48,7 +49,7 @@ def get_parsed_folder(folder_id: str, folder_db, user_id: str):
                 'as': 'reader',
                 'cond': {
                     '$or': [{
-                        '$eq': [user_id, '$$reader']
+                        '$eq': [user_username, '$$reader']
                     }]
                 }
             }
