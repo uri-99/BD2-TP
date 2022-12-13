@@ -205,6 +205,10 @@ def verify_patch_content(body_request):
         del body_request['title']
     except:
         a=0 #nothing
+    try:
+        del body_request['parentFolder']
+    except:
+        a=0 #nothing
 
     if len(body_request) != 0:
         raise HTTPException(status_code=405, detail="Wrong Patch format, {} unacceptable".format(body_request))

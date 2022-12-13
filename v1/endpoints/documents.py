@@ -3,7 +3,6 @@ import os
 
 import elasticsearch
 from datetime import datetime
-from fastapi import Request, Response, Header
 
 from core.auth.models import LoggedUser
 from core.auth.utils import get_current_user, verify_logged_in, verify_existing_users, verify_existing_folder, \
@@ -11,8 +10,9 @@ from core.auth.utils import get_current_user, verify_logged_in, verify_existing_
 
 from . import *
 from core.helpers.db_client import ElasticManager
-elastic = ElasticManager.get_instance()
 
+elastic = ElasticManager.get_instance()
+users_db = MongoManager.get_instance().BD2.User
 
 router = APIRouter(
     prefix="/documents",
@@ -21,21 +21,23 @@ router = APIRouter(
 )
 
 tag_metadata = {
-        'name': 'documents',
-        'description': 'Managing of documents'
+    'name': 'documents',
+    'description': 'Managing of documents'
 }
 
 
 @router.get(
     "",
-    # response_model=List[Document],
+    response_model=List[Document],
     status_code=status.HTTP_200_OK,
     responses={
         200: {'description': 'Found documents list'},
         400: {'description': 'Sent wrong query param'}
     }
 )
-def get_documents(request: Request, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "", description: Union[str, None] = "", content: Union[str, None] = "", current_user: LoggedUser = Depends(get_current_user)):
+def get_documents(request: Request, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "",
+                  description: Union[str, None] = "", content: Union[str, None] = "",
+                  current_user: LoggedUser = Depends(get_current_user)):
     wildContent = "*" + content + "*"
     wildTitle = "*" + title + "*"
     wildDescription = "*" + description + "*"
@@ -48,7 +50,7 @@ def get_documents(request: Request, page: int = 1, title: Union[str, None] = "",
         print("logged in, {}".format(current_user.username))
         username = current_user.username
     resp = elastic.search(index="documents", body={
-        "from": (page-1)*10,
+        "from": (page - 1) * 10,
         "size": 10,
         "query": {
             "bool": {
@@ -76,26 +78,43 @@ def get_documents(request: Request, page: int = 1, title: Union[str, None] = "",
                         }
                     }
                 ],
-          "should": [
-            { "fuzzy": {"title": title}},
-            { "fuzzy": {"createdBy": author}},
-            { "fuzzy": {"description": description}},
-            { "wildcard": {"title": {"value": wildTitle}}},
-            { "wildcard": {"description": {"value": wildDescription}}},
-            { "wildcard" : {"content": {"value": wildContent}}}
-          ]
-        }
-    }})
-    toRet = []
+                "should": [
+                    {"fuzzy": {"title": title}},
+                    {"fuzzy": {"createdBy": author}},
+                    {"fuzzy": {"description": description}},
+                    {"wildcard": {"title": {"value": wildTitle}}},
+                    {"wildcard": {"description": {"value": wildDescription}}},
+                    {"wildcard": {"content": {"value": wildContent}}}
+                ]
+            }
+        }})
+    toRet = list()
     for document in resp["hits"]["hits"]:
-        self = str(request.url.remove_query_params(["title", "author", "page"])) + "/" + str(document['_id'])
-        onTop = {"self" : self}
-        del document["_index"]
-        document = {**onTop, **document}
-        toRet.append(document)
-
+        toRet.append(Document(
+            self=str(request.url.remove_query_params(["title", "author", "description", "content", "page"])) +
+                 "/" + document['_id'],
+            id=document['_id'],
+            createdBy=document['_source']['createdBy'],
+            createdOn=str(document['_source']['createdOn']),
+            lastEditedBy=document['_source']['lastEditedBy'],
+            lastEdited=str(document['_source']['lastEdited']),
+            readers=document['_source']['readers'],
+            writers=document['_source']['writers'],
+            allCanRead=document['_source']['allCanRead'],
+            allCanWrite=document['_source']['allCanWrite'],
+            title=document['_source']['title'],
+            description=document['_source']['description'],
+            content=document['_source']['content'],
+            parentFolder=document['_source']['parentFolder']
+        ))
+    # self = str(request.url.remove_query_params(["title", "author", "page"])) + "/" + str(document['_id'])
+    # onTop = {"self" : self}
+    # del document["_index"]
+    # document = {**onTop, **document}
+    # toRet.append(document)
     # return resp["hits"]["hits"]
     return toRet
+
 
 @router.post(
     "",
@@ -103,17 +122,18 @@ def get_documents(request: Request, page: int = 1, title: Union[str, None] = "",
     responses={
         201: {'description': 'Document successfully created'},
         401: {'description': 'User must be logged in'},
+        403: {'description': 'User has no access to this folder'},
         406: {'description': 'User does not exist'},
-        407: {'description': 'Wrong Folder Id Format'},
-        403: {'description': 'User has no access to this folder'}
+        407: {'description': 'Wrong Folder Id Format'}
     }
 )
-def create_document(doc: NewDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
+def create_document(doc: NewDocument, request: Request, response: Response,
+                    current_user: LoggedUser = Depends(get_current_user)):
     verify_logged_in(current_user)
     verify_existing_users(doc.writers, doc.readers)
 
     if doc.parentFolder == "":
-        a=0 #nothing
+        a = 0  # nothing
     elif len(doc.parentFolder) != 24:
         raise HTTPException(status_code=407, detail="Wrong Folder Id Format")
     else:
@@ -145,18 +165,23 @@ def create_document(doc: NewDocument, request: Request, response: Response, curr
     }
     resp = elastic.index(index="documents", id=new_doc_id, document=document)
     add_newDocId_to_mongo_folder(new_doc_id, doc.parentFolder)
-    response.headers.append("Location", request.url._url + "/" + resp['_id'])
+    users_db.update_one({"_id": ObjectId(current_user.id)}, {
+        "$addToSet": {
+            "notes": resp['_id']
+        }
+    })
+    response.headers.append("Location", str(request.url) + "/" + str(resp['_id']))
     return {}
 
 
 @router.get(
     "/{id}",
-    #response_model=Document,
+    response_model=Document,
     status_code=status.HTTP_200_OK,
     responses={
         200: {'description': 'Found document'},
-        404: {'description': 'Document not found for id sent'},
-        403: {'description': 'User has no access to this document'}
+        403: {'description': 'User has no access to this document'},
+        404: {'description': 'Document not found for id sent'}
     }
 )
 async def get_document(id: str, request: Request, current_user: LoggedUser = Depends(get_current_user)):
@@ -165,48 +190,67 @@ async def get_document(id: str, request: Request, current_user: LoggedUser = Dep
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-    self = str(request.url.remove_query_params(["title", "author", "page"])) + "/" + str(elastic_doc['_id'])
-    onTop = {"self": self}
-    original_document = elastic_doc["_source"]
-    toRet = {**onTop, **original_document}
+    toRet = Document(
+        self=str(request.url),
+        id=elastic_doc['_id'],
+        createdBy=elastic_doc['_source']['createdBy'],
+        createdOn=str(elastic_doc['_source']['createdOn']),
+        lastEditedBy=elastic_doc['_source']['lastEditedBy'],
+        lastEdited=str(elastic_doc['_source']['lastEdited']),
+        readers=elastic_doc['_source']['readers'],
+        writers=elastic_doc['_source']['writers'],
+        allCanRead=elastic_doc['_source']['allCanRead'],
+        allCanWrite=elastic_doc['_source']['allCanWrite'],
+        title=elastic_doc['_source']['title'],
+        description=elastic_doc['_source']['description'],
+        content=elastic_doc['_source']['content'],
+        parentFolder=elastic_doc['_source']['parentFolder']
+    )
+    # self = str(request.url.remove_query_params(["title", "author", "page"])) + "/" + str(elastic_doc['_id'])
+    # onTop = {"self": self}
+    # original_document = elastic_doc["_source"]
+    # toRet = {**onTop, **original_document}
 
     if elastic_doc["_source"]["allCanRead"] is True or elastic_doc["_source"]["allCanWrite"] is True:
         return toRet
-    else: #doc is not open to read
+    else:  # doc is not open to read
         if current_user is None:
             raise HTTPException(status_code=403, detail="User has no access to this document")
         else:
-            if current_user.username in elastic_doc["_source"]["createdBy"] or current_user.username in elastic_doc["_source"]["readers"] or current_user.username in elastic_doc["_source"]["writers"]:
+            if current_user.username in elastic_doc["_source"]["createdBy"] or current_user.username in \
+                    elastic_doc["_source"]["readers"] or current_user.username in elastic_doc["_source"]["writers"]:
                 return toRet
             else:
                 raise HTTPException(status_code=403, detail="User has no access to this document")
 
 
+# TODO: Check parentFolder change (must change folder object content too)
 @router.patch(
     "/{id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {'description': 'Modified document'},
-        404: {'description': 'Document not found'},
         403: {'description': 'User has no access to this document'},
+        404: {'description': 'Document not found'},
         405: {'description': 'Wrong Patch format'}
     }
 )
-async def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response, current_user: LoggedUser = Depends(get_current_user)):
+async def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response,
+                          current_user: LoggedUser = Depends(get_current_user)):
     verify_logged_in(current_user)
     try:
         elastic_doc = elastic.get(index="documents", id=id)
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
 
-    if current_user.username not in elastic_doc["_source"]["writers"] and current_user.username not in elastic_doc["_source"]["createdBy"]:
+    if current_user.username not in elastic_doc["_source"]["writers"] and current_user.username not in \
+            elastic_doc["_source"]["createdBy"]:
         raise HTTPException(status_code=403, detail="User has no access to this document")
 
     verify_existing_users(doc.writers, doc.readers)
 
     body_request = await request.json()
     verify_patch_content(body_request)
-
 
     newDoc = {
         'lastEditedBy': current_user.username,
@@ -218,12 +262,9 @@ async def modify_document(id: str, doc: UpdateDocument, request: Request, respon
         "title": elastic_doc["_source"]["title"] if doc.title is None else doc.title,
         "description": elastic_doc["_source"]["description"] if doc.description is None else doc.description,
         "content": elastic_doc["_source"]["content"] if doc.content is None else doc.content,
+        "parentFolder": elastic_doc["_source"]["parentFolder"] if doc.parentFolder is None else doc.parentFolder,
     }
-    resp = elastic.update(index="documents", id=id, doc=newDoc)
-    response.headers.append("Location", request.url._url)
-    # print(resp)
-    return {}
-
+    elastic.update(index="documents", id=id, doc=newDoc)
 
 
 @router.delete(
@@ -250,4 +291,3 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
 
     if parentFolderId != "":
         remove_docId_from_mongo_folder(doc["_id"], parentFolderId)
-    return {}

@@ -36,6 +36,7 @@ class UpdateDocument(BaseModel):
     title: Optional[str]
     description: Optional[str]
     content: Optional[List[str]]
+    parentFolder: Optional[str]
 
 
 class Document(BaseModel):
@@ -52,6 +53,7 @@ class Document(BaseModel):
     title: str
     description: str
     content: List[str]
+    parentFolder: str
 
 
 class Folder(BaseModel):
