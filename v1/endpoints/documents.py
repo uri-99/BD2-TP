@@ -1,5 +1,4 @@
-import binascii
-import os
+import uuid
 
 import elasticsearch
 from datetime import datetime
@@ -13,6 +12,7 @@ from core.helpers.db_client import ElasticManager
 
 elastic = ElasticManager.get_instance()
 users_db = MongoManager.get_instance().BD2.User
+folders_db = MongoManager.get_instance().BD2.Folder
 
 router = APIRouter(
     prefix="/documents",
@@ -107,12 +107,6 @@ def get_documents(request: Request, page: int = 1, title: Union[str, None] = "",
             content=document['_source']['content'],
             parentFolder=document['_source']['parentFolder']
         ))
-    # self = str(request.url.remove_query_params(["title", "author", "page"])) + "/" + str(document['_id'])
-    # onTop = {"self" : self}
-    # del document["_index"]
-    # document = {**onTop, **document}
-    # toRet.append(document)
-    # return resp["hits"]["hits"]
     return toRet
 
 
@@ -139,16 +133,6 @@ def create_document(doc: NewDocument, request: Request, response: Response,
     else:
         verify_existing_folder(doc.parentFolder, current_user.id)
 
-    new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
-    validId = False
-    while not validId:
-        try:
-            elastic.get(index="documents", id=new_doc_id)
-        except elasticsearch.NotFoundError:
-            validId = True
-        else:
-            new_doc_id = binascii.b2a_hex(os.urandom(12)).decode('utf-8')
-
     document = {
         'createdBy': current_user.username,
         'createdOn': datetime.now(),
@@ -163,14 +147,15 @@ def create_document(doc: NewDocument, request: Request, response: Response,
         'content': doc.content,
         'parentFolder': doc.parentFolder
     }
-    resp = elastic.index(index="documents", id=new_doc_id, document=document)
-    add_newDocId_to_mongo_folder(new_doc_id, doc.parentFolder)
+    doc_id = uuid.uuid1()
+    resp = elastic.index(index="documents", id=doc_id, document=document)
+    add_newDocId_to_mongo_folder(doc_id, doc.parentFolder)
     users_db.update_one({"_id": ObjectId(current_user.id)}, {
         "$addToSet": {
             "notes": resp['_id']
         }
     })
-    response.headers.append("Location", str(request.url) + "/" + str(resp['_id']))
+    response.headers.append("Location", str(request.url) + "/" + str(doc_id))
     return {}
 
 
@@ -206,10 +191,6 @@ async def get_document(id: str, request: Request, current_user: LoggedUser = Dep
         content=elastic_doc['_source']['content'],
         parentFolder=elastic_doc['_source']['parentFolder']
     )
-    # self = str(request.url.remove_query_params(["title", "author", "page"])) + "/" + str(elastic_doc['_id'])
-    # onTop = {"self": self}
-    # original_document = elastic_doc["_source"]
-    # toRet = {**onTop, **original_document}
 
     if elastic_doc["_source"]["allCanRead"] is True or elastic_doc["_source"]["allCanWrite"] is True:
         return toRet
@@ -235,7 +216,7 @@ async def get_document(id: str, request: Request, current_user: LoggedUser = Dep
         405: {'description': 'Wrong Patch format'}
     }
 )
-async def modify_document(id: str, doc: UpdateDocument, request: Request, response: Response,
+async def modify_document(id: str, doc: UpdateDocument, request: Request,
                           current_user: LoggedUser = Depends(get_current_user)):
     verify_logged_in(current_user)
     try:
@@ -251,6 +232,12 @@ async def modify_document(id: str, doc: UpdateDocument, request: Request, respon
 
     body_request = await request.json()
     verify_patch_content(body_request)
+
+    if doc.parentFolder is not None and doc.parentFolder != elastic_doc['_source']['parentFolder']:     # Change folders content field on parentFolder change
+        folders_db.update_one({"_id": ObjectId(elastic_doc['_source']['parentFolder'])},
+                              {"$pull": {"content": elastic_doc['_id']}})
+        folders_db.update_one({"_id": ObjectId(doc.parentFolder)},
+                              {"$addToSet": {"content": elastic_doc['_id']}})
 
     newDoc = {
         'lastEditedBy': current_user.username,
@@ -288,6 +275,8 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
         resp = elastic.delete(index="documents", id=id)
     else:
         raise HTTPException(status_code=403, detail="User has no permission to delete this document")
+
+    users_db.update_one({"_id": ObjectId(current_user.id)}, {"$pull": {"notes": id}})
 
     if parentFolderId != "":
         remove_docId_from_mongo_folder(doc["_id"], parentFolderId)

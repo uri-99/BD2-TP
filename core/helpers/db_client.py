@@ -1,7 +1,7 @@
 import os
 
 import pymongo
-from dotenv import dotenv_values, load_dotenv
+from dotenv import load_dotenv
 from elasticsearch import Elasticsearch
 
 from core.settings import SingletonSettings
