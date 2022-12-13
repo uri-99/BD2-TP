@@ -205,7 +205,6 @@ async def get_document(id: str, request: Request, current_user: LoggedUser = Dep
                 raise HTTPException(status_code=403, detail="User has no access to this document")
 
 
-# TODO: Check parentFolder change (must change folder object content too)
 @router.patch(
     "/{id}",
     status_code=status.HTTP_204_NO_CONTENT,
