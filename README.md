@@ -7,7 +7,7 @@ Una descripción con mayor detalle se puede encontrar en <a href="https://docs.g
 Los miembros del grupo <b>Los Notilokos</b> somos:
 * [BIRSA, NICOLAS EZEQUIEL](https://github.com/Fegrant)
 * [MIHURA, URIEL](https://github.com/uri-99)
-* SOLEÑO, JUSTO NICOLAS
+* [SOLEÑO, JUSTO NICOLAS](https://github.com/JustoSole)
 
 
 
@@ -31,12 +31,10 @@ Los miembros del grupo <b>Los Notilokos</b> somos:
     <li>
         <a href="#uso">Uso</a>
         <ul>
+            <li><a href="#deploy">Deploy</a></li>
             <li><a href="#autenticación">Autenticación</a></li>
             <li><a href="#permisos">Permisos</a></li>
         </ul>
-    </li>
-    <li>
-        <a href="#deploy">Deploy</a>
     </li>
     <li>
         <a href="#desarrollo-del-proyecto">Desarrollo del proyecto</a>
@@ -72,7 +70,7 @@ Se expone una API para los distintos pedidos de usuarios, donde se puede usar el
 
 La API del proyecto se hizo usando <a href="https://fastapi.tiangolo.com/">FastAPI</a>, ya que es una tecnología fácil de usar y con mucha documentación disponible para el proceso de desarrollo, desde el primer endpoint local hasta el deploy. A su vez, nos permite generar el <a href="https://swagger.io/">Swagger</a> como documentación y primera interfaz para interactuar con la API.
 
-Por otro lado, para guardar los datos de la aplicación se utilizó la técnica de persistencia políglota, donde se eligieron como bases de datos a usar <a href="https://www.mongodb.com/">MongoDB</a> y <a href="https://www.elastic.co/elasticsearch/">Elasticsearch</a>. La primera, para el guardado de usuarios y carpetas, cuyo formato puede cambiar a futuro, mientras que las notas se guardan en Elasticsearch para agilizar la búsqueda y modificación de estas, que son las principal acciónes que realizarán los usuarios.
+Por otro lado, para guardar los datos de la aplicación se utilizó la técnica de persistencia políglota, donde se eligieron como bases de datos a usar <a href="https://www.mongodb.com/">MongoDB</a> y <a href="https://www.elastic.co/elasticsearch/">Elasticsearch</a>. La primera, para el guardado de usuarios y carpetas, cuyo formato puede cambiar a futuro, mientras que las notas se guardan en Elasticsearch para agilizar la búsqueda y modificación de estas, que son las principales acciones que realizarán los usuarios.
 
 Por último, para la autenticación de los usuarios usamos <a href="https://jwt.io/">JSON Web Tokens</a>, o JWT, donde un usuario se autentica en primera instancia y se le devuelve un token que usará para autenticarse en los siguientes pedidos.
 
@@ -126,6 +124,8 @@ $ pip install -r requirements.txt
 
 <b><h4>Tip extra:</h4></b> Si en un futuro se desea deployear la aplicación en alguna plataforma como <a href="https://www.deta.sh/">Deta</a>, este archivo también servirá para indicarle al servidor remoto que dependencias debe instalar previo a correr la aplicación.
 
+
+
 ## Uso
 
 Para correr la API localmente se usa el programa Uvicorn antes instalado, de la siguiente manera:
@@ -140,14 +140,11 @@ Para acceder al Swagger se deberá dirigir a la url http://127.0.0.1:8000/docs#/
 
 [![Product Name Screen Shot][product-screenshot]](https://petstore.swagger.io/)
 
-
-## Deploy
+### Deploy
 
 La última versión de esta API ya se encuentra deployeada en la url https://u9usr1.deta.dev, conectada a bases de datos propias con data de ejemplo, para poder interactuar con ella y ver su funcionamiento.
 
 De igual manera, el Swagger se encuentra en https://u9usr1.deta.dev/docs donde se puede ver la documentación y llamar a los métodos HTTP de una forma más sencilla.
-
-
 
 ### Autenticación
 
@@ -204,8 +201,8 @@ Dentro de los primeros, están los siguientes casos:
 
 Mejoras a futuro del proyecto:
 
-- [ ] Diseñar front de la aplicación
-- [ ] Implementar transacciones atómicas a nivel de software para las operaciones que le correspondan
+- [ ] Diseñar front de la aplicación.
+- [ ] Implementar transacciones atómicas a nivel de software para las operaciones que le correspondan.
 - [ ] Implementar estructura MVC, con capas de front, servicios y persistencia, para separar responsabilidades y facilitar cambios a futuro.
 
 [fastapi-logo]: https://img.shields.io/badge/FastAPI-000000?logo=fastapi
