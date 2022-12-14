@@ -92,31 +92,31 @@ def verify_existing_users(writers, readers):
     if writers is not None:
         for writer in writers:
             if users_db.find_one({'username': writer}) is None:
-                raise HTTPException(status_code=406, detail="User '{}' does not exist".format(writer))
+                raise HTTPException(status_code=404, detail="User '{}' does not exist".format(writer))
     if readers is not None:
         for reader in readers:
             if users_db.find_one({'username': reader}) is None:
-                raise HTTPException(status_code=406, detail="User '{}' does not exist".format(reader))
+                raise HTTPException(status_code=404, detail="User '{}' does not exist".format(reader))
 
 
 def verify_existing_folder(folderId, username):
     try:
         folder = folders_db.find_one({'_id': ObjectId(folderId)})
         if folder is None:
-            raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(folderId))
+            raise HTTPException(status_code=404, detail="Folder '{}' does not exist".format(folderId))
         if folder["createdBy"] != username:
             if folder["allCanWrite"] is False:
                 if username not in folder["writers"]:
                     raise HTTPException(status_code=403, detail="User has no access to this folder")
     except InvalidId:
-        raise HTTPException(status_code=407, detail="Wrong Folder Id Format")
+        raise HTTPException(status_code=400, detail="Wrong Folder Id Format")
 
 
 def add_newDocId_to_mongo_folder(newDocId, parentFolderId):
     if parentFolderId != "":
         folder = folders_db.find_one({'_id': ObjectId(parentFolderId)})
         if folder is None:
-            raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(parentFolderId))
+            raise HTTPException(status_code=404, detail="Folder '{}' does not exist".format(parentFolderId))
 
         newContent = folder["content"]
         newContent.append(str(newDocId))
@@ -126,7 +126,7 @@ def add_newDocId_to_mongo_folder(newDocId, parentFolderId):
 def remove_docId_from_mongo_folder(docId, parentFolderId):
     folder = folders_db.find_one({'_id': ObjectId(parentFolderId)})
     if folder is None:
-        raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(parentFolderId))
+        raise HTTPException(status_code=404, detail="Folder '{}' does not exist".format(parentFolderId))
 
     newContent = folder["content"]
     try:
