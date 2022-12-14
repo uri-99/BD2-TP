@@ -119,7 +119,7 @@ def add_newDocId_to_mongo_folder(newDocId, parentFolderId):
             raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(parentFolderId))
 
         newContent = folder["content"]
-        newContent.append(newDocId)
+        newContent.append(str(newDocId))
         folders_db.update_one({'_id': ObjectId(parentFolderId)}, {"$set": {"content": newContent}})
 
 
