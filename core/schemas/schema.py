@@ -19,13 +19,13 @@ class User(BaseModel):
 class NewDocument(BaseModel):
     title: str
     description: str
-    content: List[str]
-    parentFolder: str
-    readers: List[str]
-    writers: List[str]
-    allCanRead: bool
-    allCanWrite: bool
-    parentFolder: str
+    content: Optional[List[str]]
+    parentFolder: Optional[str]
+    readers: Optional[List[str]]
+    writers: Optional[List[str]]
+    allCanRead: Optional[bool]
+    allCanWrite: Optional[bool]
+    parentFolder: Optional[str]
 
 
 class UpdateDocument(BaseModel):

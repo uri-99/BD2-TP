@@ -124,26 +124,21 @@ def create_document(doc: NewDocument, request: Request, response: Response,
     verify_logged_in(current_user)
     verify_existing_users(doc.writers, doc.readers)
 
-    if doc.parentFolder == "":
-        a = 0  # nothing
-    elif len(doc.parentFolder) != 24:
-        raise HTTPException(status_code=407, detail="Wrong Folder Id Format")
-    else:
-        verify_existing_folder(doc.parentFolder, current_user.id)
+    verify_existing_folder(doc.parentFolder, current_user.username)
 
     document = {
         'createdBy': current_user.username,
         'createdOn': datetime.now(),
         'lastEditedBy': current_user.username,
         'lastEdited': datetime.now(),
-        'readers': doc.readers,
-        'writers': doc.writers,
-        'allCanRead': doc.allCanRead,
-        'allCanWrite': doc.allCanWrite,
+        'readers': doc.readers if doc.readers is not None else [],
+        'writers': doc.writers if doc.writers is not None else [],
+        'allCanRead': doc.allCanRead if doc.allCanRead is not None else False,
+        'allCanWrite': doc.allCanWrite if doc.allCanWrite is not None else False,
         'title': doc.title,
         'description': doc.description,
-        'content': doc.content,
-        'parentFolder': doc.parentFolder
+        'content': doc.content if doc.content is not None else [],
+        'parentFolder': doc.parentFolder if doc.parentFolder is not None else ""
     }
     doc_id = uuid.uuid1()
     resp = elastic.index(index="documents", id=doc_id, document=document)
