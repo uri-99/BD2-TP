@@ -42,7 +42,7 @@ def get_parsed_folder(folder_id: str, folder_db, user_username: str):
             return_folder['readers'] = []
             return return_folder
 
-        folder = list(folder_db.aggregate([
+        folder_list = list(folder_db.aggregate([
             {
                 '$match': {
                     '_id': ObjectId(folder_id)
@@ -65,7 +65,10 @@ def get_parsed_folder(folder_id: str, folder_db, user_username: str):
                     'allCanWrite': 1,
                 }
             }
-        ]))[0]
+        ]))
+        if len(folder_list) == 0:
+            return None
+        folder = folder_list[0]
         if user_username != folder["createdBy"]:
             folder["writers"] = [user_username] if user_username in folder["writers"] else []
             folder["readers"] = [user_username] if user_username in folder["readers"] else []

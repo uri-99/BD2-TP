@@ -85,13 +85,13 @@ def get_favorites(request: Request, response: Response, page: int = 1,
             readers=favorite['_source']['readers'],
             writers=favorite['_source']['writers'],
             allCanRead=favorite['_source']['allCanRead'],
-            allCanWrite=favorite['_source']['allCanWrite']
+            allCanWrite=favorite['_source']['allCanWrite'],
+            parentFolder=favorite['_source']['parentFolder']
         ))
     response.headers.append("first", str(request.url.remove_query_params(["page"]).include_query_params(page=1)))
     response.headers.append("last", str(request.url.remove_query_params(["page"]).include_query_params(
         page=str(int((favorite_count - 1) / document_page_size) + 1))))
     return favorites
-    # return json.loads(json_util.dumps(favorites))
 
 
 @router.put(
@@ -122,6 +122,7 @@ def add_favorite(doc_id: str, current_user: LoggedUser = Depends(get_current_use
         readers=elastic_doc['_source']['readers'],
         allCanWrite=elastic_doc['_source']['allCanWrite'],
         allCanRead=elastic_doc['_source']['allCanRead'],
+        parentFolder=elastic_doc['_source']['parentFolder']
     )):
         raise HTTPException(status_code=403, detail="User has no permission to access this document")
     users_db.update_one({"_id": ObjectId(current_user.id)}, {"$addToSet": {"favorites": elastic_doc['_id']}})
