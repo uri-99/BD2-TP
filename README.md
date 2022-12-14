@@ -182,7 +182,7 @@ En comparación al MVP y sus funcionalidades detallados en <a href="https://docs
 - Borrado de cuentas de usuarios, donde en dicho proceso también se borran sus carpetas y notas.
 - Uso del campo username de cada Usuario como su id, en vez del autogenerado por Mongo, ya que también es un campo de tipo `UNIQUE` debido al índice agregado, además que aporta mayor legibilidad. que éste último.
 - Siguiendo con el objeto Usuario, se quitó el campo de mail ya que no lo terminamos usando. Pero, dada la estructura flexible de Mongo, se podría agregar soporte para esto en un futuro.
-- Para mejorar la privacidad, un usuario no puede saber cuáles son las notas favoritas de otros ni tampoco saber quiénes son los otros lectores y escritores de notas o carpetas, a menos que sea el dueño de estas.
+- Para mejorar la privacidad, un usuario no puede saber cuáles son las notas favoritas de otros, ni tampoco saber quiénes son los otros lectores y escritores de carpetas, a menos que sea el dueño de la misma.
 - Los métodos `PUT` de modificar notas y carpetas se remplazaron por los de tipo `PATCH` además de cambiar su implementación inicial, para que el usuario pueda modificar parcialmente una nota o carpeta.
 - En la búsqueda de notas, se aprovechó el potencial de Elasticsearch con búsquedas por valores parecidos y ordenamiento de resultados por similitud.
 - La API, que inicialmente se pensó local, ahora también se encuentra deployeada. El link está en la sección previa de <a href="#deploy">Deploy</a>.
