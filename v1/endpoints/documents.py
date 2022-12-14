@@ -124,7 +124,8 @@ def create_document(doc: NewDocument, request: Request, response: Response,
     verify_logged_in(current_user)
     verify_existing_users(doc.writers, doc.readers)
 
-    verify_existing_folder(doc.parentFolder, current_user.username)
+    if doc.parentFolder is not None:
+        verify_existing_folder(doc.parentFolder, current_user.username)
 
     document = {
         'createdBy': current_user.username,
@@ -142,7 +143,9 @@ def create_document(doc: NewDocument, request: Request, response: Response,
     }
     doc_id = uuid.uuid1()
     resp = elastic.index(index="documents", id=doc_id, document=document)
-    add_newDocId_to_mongo_folder(doc_id, doc.parentFolder)
+    if doc.parentFolder is not None:
+        add_newDocId_to_mongo_folder(doc_id, doc.parentFolder)
+
     users_db.update_one({"_id": ObjectId(current_user.id)}, {
         "$addToSet": {
             "notes": resp['_id']
