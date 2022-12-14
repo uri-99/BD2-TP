@@ -120,8 +120,8 @@ def get_documents(request: Request, response: Response, page: int = 1, title: Un
         201: {'description': 'Document successfully created'},
         401: {'description': 'User must be logged in'},
         403: {'description': 'User has no access to this folder'},
-        406: {'description': 'User does not exist'},
-        407: {'description': 'Wrong Folder Id Format'}
+        404: {'description': 'User does not exist'},
+        400: {'description': 'Wrong Folder Id Format'}
     }
 )
 def create_document(doc: NewDocument, request: Request, response: Response,
@@ -214,7 +214,7 @@ async def get_document(id: str, request: Request, current_user: LoggedUser = Dep
         403: {'description': 'User has no access to this document'},
         404: {'description': 'Document not found'},
         405: {'description': 'Wrong Patch format'},
-        406: {'description': 'User has no permission to edit writers'}
+        403: {'description': 'User has no permission to edit writers'}
     }
 )
 async def modify_document(id: str, doc: UpdateDocument, request: Request,
@@ -235,9 +235,9 @@ async def modify_document(id: str, doc: UpdateDocument, request: Request,
     verify_patch_content(body_request)
 
     if current_user.username != elastic_doc["_source"]["createdBy"] and doc.writers is not None:
-        raise HTTPException(status_code=406, detail="User has no permission to edit writers")
+        raise HTTPException(status_code=403, detail="User has no permission to edit writers")
     if current_user.username != elastic_doc["_source"]["createdBy"] and doc.readers is not None:
-        raise HTTPException(status_code=406, detail="User has no permission to edit readers")
+        raise HTTPException(status_code=403, detail="User has no permission to edit readers")
 
     if doc.parentFolder is not None and doc.parentFolder != elastic_doc['_source']['parentFolder']:     # Change folders content field on parentFolder change
         folders_db.update_one({"_id": ObjectId(elastic_doc['_source']['parentFolder'])},
