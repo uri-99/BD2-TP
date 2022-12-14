@@ -212,7 +212,8 @@ async def get_document(id: str, request: Request, current_user: LoggedUser = Dep
         204: {'description': 'Modified document'},
         403: {'description': 'User has no access to this document'},
         404: {'description': 'Document not found'},
-        405: {'description': 'Wrong Patch format'}
+        405: {'description': 'Wrong Patch format'},
+        406: {'description': 'User has no permission to edit writers'}
     }
 )
 async def modify_document(id: str, doc: UpdateDocument, request: Request,
@@ -231,6 +232,10 @@ async def modify_document(id: str, doc: UpdateDocument, request: Request,
 
     body_request = await request.json()
     verify_patch_content(body_request)
+
+    if current_user.username != elastic_doc["_source"]["createdBy"] and doc.writers is not None:
+        raise HTTPException(status_code=406, detail="User has no permission to edit writers")
+
 
     if doc.parentFolder is not None and doc.parentFolder != elastic_doc['_source']['parentFolder']:     # Change folders content field on parentFolder change
         folders_db.update_one({"_id": ObjectId(elastic_doc['_source']['parentFolder'])},

@@ -41,26 +41,30 @@ def get_parsed_folder(folder_id: str, folder_db, user_username: str):
             return_folder['writers'] = []
             return_folder['readers'] = []
             return return_folder
-        writers_filter = {
-            '$filter': {
-                'input': '$writers',
-                'as': 'writers',
-                'cond': {
-                    '$eq': [user_username, '$$writers']
-                }
-            }
-        }
-        readers_filter = {
-            '$filter': {
-                'input': '$readers',
-                'as': 'reader',
-                'cond': {
-                    '$or': [{
-                        '$eq': [user_username, '$$reader']
-                    }]
-                }
-            }
-        }
+
+        # writers_filter = 1
+        # readers_filter = 1
+        # if user_username == :
+        # writers_filter = {
+        #     '$filter': {
+        #         'input': '$writers',
+        #         'as': 'writers',
+        #         'cond': {
+        #             '$eq': [user_username, '$$writers']
+        #         }
+        #     }
+        # }
+        # readers_filter = {
+        #     '$filter': {
+        #         'input': '$readers',
+        #         'as': 'reader',
+        #         'cond': {
+        #             '$or': [{
+        #                 '$eq': [user_username, '$$reader']
+        #             }]
+        #         }
+        #     }
+        # }
         folder = list(folder_db.aggregate([
             {
                 '$match': {
@@ -75,16 +79,20 @@ def get_parsed_folder(folder_id: str, folder_db, user_username: str):
                     'createdOn': 1,
                     'lastEditedBy': 1,
                     'lastEdited': 1,
-                    'writers': writers_filter,
+                    'writers': 1,
                     'title': 1,
                     'description': 1,
                     'content': 1,
-                    'readers': readers_filter,
+                    'readers': 1,
                     'allCanRead': 1,
                     'allCanWrite': 1,
                 }
             }
         ]))[0]
+        if user_username != folder["createdBy"]:
+            folder["writers"] = [user_username] if user_username in folder["writers"] else []
+            folder["readers"] = [user_username] if user_username in folder["readers"] else []
+
         folder['id'] = str(folder['id'])
         return folder
     except InvalidId:
