@@ -18,6 +18,7 @@ Los miembros del grupo <b>Los Notilokos</b> somos:
       <a href="#acerca-del-proyecto">Acerca del proyecto</a>
       <ul>
         <li><a href="#tecnologías-usadas">Tecnologías usadas</a></li>
+        <li><a href="#app-scehma">App schema</a></li>
       </ul>
     </li>
     <li>
@@ -74,7 +75,11 @@ Por otro lado, para guardar los datos de la aplicación se utilizó la técnica 
 
 Por último, para la autenticación de los usuarios usamos <a href="https://jwt.io/">JSON Web Tokens</a>, o JWT, donde un usuario se autentica en primera instancia y se le devuelve un token que usará para autenticarse en los siguientes pedidos.
 
+### App schema
 
+Se puede ver la estructura general de las bases de datos del proyecto a continuación:
+
+![alt text](assets/SchemasTpBD2.drawio.png)
 
 ## Instalación
 
