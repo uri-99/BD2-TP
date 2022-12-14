@@ -13,7 +13,7 @@ from core.models.database import DBDocument, DBFolder
 from core.settings import SingletonSettings
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 load_dotenv(SingletonSettings.get_instance().Config.env_file)
 jwt_key = os.getenv('JWT_KEY')
@@ -27,7 +27,7 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, jwt_key, algorithm=ALGORITHM)
     return encoded_jwt

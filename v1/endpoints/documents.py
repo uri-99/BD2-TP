@@ -232,7 +232,6 @@ async def modify_document(id: str, doc: UpdateDocument, request: Request,
     if current_user.username != elastic_doc["_source"]["createdBy"] and doc.writers is not None:
         raise HTTPException(status_code=406, detail="User has no permission to edit writers")
 
-
     if doc.parentFolder is not None and doc.parentFolder != elastic_doc['_source']['parentFolder']:     # Change folders content field on parentFolder change
         folders_db.update_one({"_id": ObjectId(elastic_doc['_source']['parentFolder'])},
                               {"$pull": {"content": elastic_doc['_id']}})
