@@ -47,10 +47,10 @@ def get_folders(request: Request, response: Response, page: int = 1,
 
     folder_filter = {}
     if title is not None:
-        folder_filter["title"] = title
+        folder_filter["title"] = {'$regex': ".*" + str(title) + ".*"}
     if owner is not None:
         try:
-            folder_filter["createdBy"] = owner
+            folder_filter["createdBy"] = {'$regex': ".*" + str(owner) + ".*"}
         except bson.errors.InvalidId:
             return []
     if current_user is None:
