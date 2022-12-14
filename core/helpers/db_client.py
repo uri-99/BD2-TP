@@ -47,5 +47,4 @@ class ElasticManager:
                 cloud_id=elastic_cloud_id,
                 basic_auth=(elastic_user, elastic_password)
             )
-            # print(client.info())
             ElasticManager.__instance = client

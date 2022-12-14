@@ -32,17 +32,6 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     return encoded_jwt
 
 
-# def not_logged_catcher(): #this does not work
-#     try:
-#         ret = Depends(SingletonPasswordBearer.get_instance())
-#         print("\n\nin")
-#     except HTTP_401_UNAUTHORIZED:
-#         print("\n\ncatched")
-#         return None
-#     else:
-#         return ret
-
-# async def get_current_user(token: str = not_logged_catcher()):
 async def get_current_user(token: str = Depends(SingletonPasswordBearer.get_instance())):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -116,8 +105,6 @@ def verify_existing_folder(folderId, userId):
     if folder["createdBy"] != userId:
         if folder["allCanWrite"] is False:
             if userId not in folder["writers"]:
-                print(userId)
-                print(folder["writers"])
                 raise HTTPException(status_code=403, detail="User has no access to this document")
 
 
@@ -138,9 +125,6 @@ def remove_docId_from_mongo_folder(docId, parentFolderId):
         raise HTTPException(status_code=406, detail="Folder '{}' does not exist".format(parentFolderId))
 
     newContent = folder["content"]
-    print("\n\n---------------")
-    print(newContent)
-    print(docId)
     try:
         newContent.remove(docId)
     except:

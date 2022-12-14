@@ -1,7 +1,6 @@
 import datetime
 
 import elasticsearch
-from bson.errors import InvalidId
 
 from core.auth.models import LoggedUser
 from core.auth.utils import get_current_user, user_has_permission, verify_logged_in, verify_existing_users
@@ -109,6 +108,8 @@ def create_folder(doc: NewFolder, request: Request, response: Response,
     verify_existing_users(doc.writers, doc.readers)
     if are_docs and docs_exist(doc.content) is False:
         raise HTTPException(status_code=400, detail='Document to include on folder does not exist')
+    if are_docs and is_docs_owner(doc.content, current_user) is False:
+        raise HTTPException(status_code=400, detail='User is not owner of document included in folder')
     now = datetime.datetime.now()
     result = folders_db.insert_one({
         'createdBy': current_user.username,
@@ -215,8 +216,11 @@ def modify_folder(id: str, update_folder: UpdateFolder,
     verify_existing_users(update_folder.writers, update_folder.readers)
     if are_docs and is_docs_owner(update_folder.content, current_user) is False:
         raise HTTPException(status_code=400, detail='Document to include on folder does not exist or User is not owner')
-    if current_user.username != folder.createdBy and update_folder.writers is not None:
-        raise HTTPException(status_code=406, detail="User has no permission to edit writers")
+    if current_user.username != folder.createdBy:
+        if update_folder.writers is not None:
+            raise HTTPException(status_code=403, detail="User has no permission to edit writers")
+        if update_folder.readers is not None:
+            raise HTTPException(status_code=403, detail="User has no permission to edit readers")
 
     folders_db.update_one({"_id": ObjectId(id)}, {
         "$set": {
@@ -243,20 +247,35 @@ def modify_folder(id: str, update_folder: UpdateFolder,
 )
 def delete_folder(id: str, request: Request, current_user: LoggedUser = Depends(get_current_user)):
     verify_logged_in(current_user)
-    folder = get_parsed_folder(id, folders_db, current_user.username)
-    if folder is None:
+    folder_obj = get_parsed_folder(id, folders_db, current_user.username)
+    if folder_obj is None:
         return
+    folder = DBFolder(
+        id=folder_obj['id'],
+        createdBy=folder_obj['createdBy'],
+        createdOn=str(folder_obj['createdOn']),
+        lastEditedBy=folder_obj['lastEditedBy'],
+        lastEdited=str(folder_obj['lastEdited']),
+        title=folder_obj['title'],
+        description=folder_obj['description'],
+        content=folder_obj['content'],
+        writers=folder_obj['writers'],
+        readers=folder_obj['readers'],
+        allCanRead=folder_obj['allCanRead'],
+        allCanWrite=folder_obj['allCanWrite'],
+    )
     if user_has_permission(folder, current_user, request.method.title()) is False:
         raise HTTPException(status_code=403, detail="User has no permission to modify this folder")
-    elastic.delete_by_query(index="documents", query={
-        "bool": {
-            "must": [
-                {
-                    "match": {"createdBy": folder['content']}
-                }
-            ]
-        }
-    })
+    if len(folder.content) > 0:
+        elastic.delete_by_query(index="documents", query={
+            "bool": {
+                "must": [
+                    {
+                        "match": {"createdBy": folder['content']}
+                    }
+                ]
+            }
+        })
     folders_db.delete_one({"_id": id})
 
 
@@ -278,7 +297,6 @@ def is_docs_owner(doc_list: List[str], user: LoggedUser):
     try:
         for doc in doc_list:
             aux_doc = elastic.get(index="documents", id=doc)['_source']
-            print(aux_doc)
             if aux_doc['createdBy'] != user.username:
                 return False
     except elasticsearch.NotFoundError:

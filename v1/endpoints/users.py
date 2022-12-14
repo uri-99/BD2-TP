@@ -19,14 +19,13 @@ router = APIRouter(
 )
 
 tag_metadata = {
-        'name': 'users',
-        'description': 'Operations with users'
+    'name': 'users',
+    'description': 'Operations with users'
 }
 
 users_db = MongoManager.get_instance().BD2.User
 folders_db = MongoManager.get_instance().BD2.Folder
 elastic = ElasticManager.get_instance()
-
 
 users_page_size = 10
 document_page_size = 10
@@ -51,7 +50,6 @@ async def get_users(request: Request, response: Response,
     if username is not None:
         username = ".*" + str(username) + ".*"
         username_filter = {"username": {'$regex': username}}
-
 
     result = users_db.find(username_filter, {"password": 0}).skip((page - 1) * users_page_size).limit(users_page_size)
     user_count = users_db.count_documents({})
@@ -82,11 +80,11 @@ async def get_users(request: Request, response: Response,
 def create_user(new_user: NewUser, request: Request, response: Response):
     try:
         result = users_db.insert_one({
-                'username': new_user.username,
-                'password': get_password_hash(new_user.password),
-                'notes': [],
-                'favorites': [],
-                'folders': []
+            'username': new_user.username,
+            'password': get_password_hash(new_user.password),
+            'notes': [],
+            'favorites': [],
+            'folders': []
         })
     except pymongo.errors.DuplicateKeyError:
         raise HTTPException(status_code=400, detail='User already exists with username sent')

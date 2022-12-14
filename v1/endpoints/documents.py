@@ -44,10 +44,8 @@ def get_documents(request: Request, page: int = 1, title: Union[str, None] = "",
     if page < 1:
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
     if current_user is None:
-        print("not logged in")
         username = ""
     else:
-        print("logged in, {}".format(current_user.username))
         username = current_user.username
     resp = elastic.search(index="documents", body={
         "from": (page - 1) * 10,
@@ -273,7 +271,6 @@ def delete_document(id: str, current_user: LoggedUser = Depends(get_current_user
     except elasticsearch.NotFoundError:
         raise HTTPException(status_code=404, detail="Document id not found")
     parentFolderId = doc["_source"]["parentFolder"]
-    print("parent:{}".format(parentFolderId))
 
     if current_user.username == doc["_source"]["createdBy"]:
         resp = elastic.delete(index="documents", id=id)
