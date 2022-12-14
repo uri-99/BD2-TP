@@ -49,7 +49,10 @@ async def get_users(request: Request, response: Response,
 
     username_filter = {}
     if username is not None:
-        username_filter = {"username": username}
+        username = ".*" + str(username) + ".*"
+        username_filter = {"username": {'$regex': username}}
+
+
     result = users_db.find(username_filter, {"password": 0}).skip((page - 1) * users_page_size).limit(users_page_size)
     user_count = users_db.count_documents({})
     users = list()
