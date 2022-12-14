@@ -22,11 +22,11 @@ Los miembros del grupo <b>Los Notilokos</b> somos:
     </li>
     <li>
         <a href="#instalación">Instalación</a>
-            <ul>
-                <li><a href="#variables-de-entorno">Variables de entorno</a></li>
-                <li><a href="#programas-necesarios">Programas necesarios</a></li>
-                <li><a href="#dependencias">Dependencias</a></li>
-            </ul>
+        <ul>
+            <li><a href="#variables-de-entorno">Variables de entorno</a></li>
+            <li><a href="#programas-necesarios">Programas necesarios</a></li>
+            <li><a href="#dependencias">Dependencias</a></li>
+        </ul>
     </li>
     <li>
         <a href="#uso">Uso</a>
@@ -37,6 +37,16 @@ Los miembros del grupo <b>Los Notilokos</b> somos:
     </li>
     <li>
         <a href="#deploy">Deploy</a>
+    </li>
+    <li>
+        <a href="#desarrollo del proyecto">Desarrollo del proyecto</a>
+            <ul>
+                <li><a href="#funcionalidades-agregadas">Funcionalidades agregadas</a></li>
+                <li><a href="#cambios-realizados">Cambios realizados</a></li>
+            </ul>
+    </li>
+    <li>
+        <a href="#roadmap">Roadmap</a>
     </li>
   </ol>
 
@@ -155,7 +165,46 @@ Igualmente, aunque el usuario haya iniciado sesión, hay una serie de acciones q
 
 ## Deploy
 
-La última versión de esta API se encuentra deployeada en la url https://u9usr1.deta.dev, conectada a bases de datos propias con data de ejemplo, para poder interactuar con ella y ver su funcionamiento. De igual manera, el Swagger se encuentra en https://u9usr1.deta.dev/docs donde se puede ver la documentación y llamar a los métodos HTTP de una forma más sencilla.
+La última versión de esta API se encuentra deployeada en la url https://u9usr1.deta.dev, conectada a bases de datos propias con data de ejemplo, para poder interactuar con ella y ver su funcionamiento.
+
+De igual manera, el Swagger se encuentra en https://u9usr1.deta.dev/docs donde se puede ver la documentación y llamar a los métodos HTTP de una forma más sencilla.
+
+
+
+## Desarrollo del proyecto
+
+### Funcionalidades agregadas
+
+En comparación al MVP y sus funcionalidades detallados en <a href="https://docs.google.com/presentation/d/1McvCL0FnLXXur0-HPIOZXAANOZ_mE9RxHxnfA2_eOyQ/edit?usp=sharing">la presentación</a> antes mencionada, se vieron varias oportunidades de mejora que finalmente se realizaron, y entre las cuales se encuentran las siguientes:
+- Uso de <a href=https://jwt.io/>JWT</a> para la autenticación de los pedidos y manejo de sesiones de usuarios en detrimento de solo usar un header de tipo `Authorization: Basic 3ff==`.
+- Borrado de cuentas de usuarios, donde en dicho proceso también se borran sus carpetas y notas.
+- Uso del campo username de cada Usuario como su id, en vez del autogenerado por Mongo, ya que también es un campo de tipo `UNIQUE` debido al índice agregado, además que aporta mayor legibilidad. que éste último.
+- Siguiendo con el objeto Usuario, se quitó el campo de mail ya que no lo terminamos usando. Pero, dada la estructura flexible de Mongo, se podría agregar soporte para esto en un futuro.
+- Para mejorar la privacidad, un usuario no puede saber cuáles son las notas favoritas de otros ni tampoco saber quiénes son los otros lectores y escritores de notas o carpetas, a menos que sea el dueño de estas.
+- Los métodos `PUT` de modificar notas y carpetas se remplazaron por los de tipo `PATCH` además de cambiar su implementación inicial, para que el usuario pueda modificar parcialmente una nota o carpeta.
+- En la búsqueda de notas, se aprovechó el potencial de Elasticsearch con búsquedas por valores parecidos y ordenamiento de resultados por similitud.
+- La API, que inicialmente se pensó local, ahora también se encuentra deployeada. El link está en la sección previa de <a href="#deploy">Deploy</a>.
+
+### Dificultades encontradas
+
+Al igual que las mejoras, durante el desarrollo del proyecto se encontraron diversos problemas. Algunos se solucionaron cambiando la forma en que se encaraban mientras que otros se decició no cubrirlos debido a que el ratio esfuerzo/riesgo cubrido no se justificaba.
+
+Dentro de los primeros, están los siguientes casos:
+- A la hora de hacer el set-up de ES, el correrlo local consumía demasiados recursos, por lo que se decidió hostearlo remoto y aprovechar que como tanto la API como MongoDB se encontraban ya remotos, logrando que la aplicación por completo pueda ser accedida de manera remota. Otra opción explorada fue la recomendada por los profesores, de correr Elastic dentro de Docker para evitar dichos problemas.
+- Las notas ahora se encuentran sólo en ES, opuesto a lo pensado inicialmente de que MongoDB tenga la copia original y ES una copia para búsquedas. Esto ya que, luego de evaluar la propuesta inicial, consideramos esta alternativa como más performante y fácil de implementar que tener que sincronizar ambas bases de datos y mantener una copia en ES.
+- Como el id en ES no es autogenerado, los id's de notas se generan del lado de la API. En cuanto al tipo de id's generados, se decidió adaptar un esquema de generación parecido al de mongo, usando <a href="https://docs.python.org/3/library/uuid.html">uuids</a> que toman como base el id de la máquina, la hora y una secuencia aleatoria, lo que lo hace ideal para ser generado en un contexto distribuido.
+- Para referenciar los objetos en MongoDB, inicialmente se usó el ObjectId de cada uno, pero se decidió cambiar al string que forma dicho ObjectId, ya que traía bastante problemas de parseos, y al siempre hacer dicho parseo se realentizaba el pedido en comparación a si se guardaba directamente el string.
+- Se cambió el campo de `public` de una nota o carpeta que indicaba quiénes podían acceder a ella por los de `allCanRead` y `allCanWrite`. Esto porque la primera opción indicaba un valor de acceso tanto para escritores y lectores que no llegaba a cubrir todos los casos posibles, mientras que con la segunda se puede rápidamente chequear sus valores, y en base a ellos decidir si también consultar los arrays correspondientes de lectores y escritores.
+
+
+
+## Roadmap
+
+Mejoras a futuro del proyecto:
+
+- [ ] Diseñar front de la aplicación
+- [ ] Implementar transacciones a nivel de software para las operaciones
+- [ ] Implementar estructura MVC, con capas de front, servicios y persistencia, para separar responsabilidades y facilitar cambios a futuro.
 
 [fastapi-logo]: https://img.shields.io/badge/FastAPI-000000?logo=fastapi
 [fastapi-url]: https://fastapi.tiangolo.com/
