@@ -14,6 +14,8 @@ elastic = ElasticManager.get_instance()
 users_db = MongoManager.get_instance().BD2.User
 folders_db = MongoManager.get_instance().BD2.Folder
 
+documents_page_size = 10
+
 router = APIRouter(
     prefix="/documents",
     tags=["documents"],
@@ -35,7 +37,7 @@ tag_metadata = {
         400: {'description': 'Sent wrong query param'}
     }
 )
-def get_documents(request: Request, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "",
+def get_documents(request: Request, response: Response, page: int = 1, title: Union[str, None] = "", author: Union[str, None] = "",
                   description: Union[str, None] = "", content: Union[str, None] = "",
                   current_user: LoggedUser = Depends(get_current_user)):
     wildContent = "*" + content + "*"
@@ -48,8 +50,8 @@ def get_documents(request: Request, page: int = 1, title: Union[str, None] = "",
     else:
         username = current_user.username
     resp = elastic.search(index="documents", body={
-        "from": (page - 1) * 10,
-        "size": 10,
+        "from": (page - 1) * documents_page_size,
+        "size": documents_page_size,
         "query": {
             "bool": {
                 "must": [
@@ -105,6 +107,9 @@ def get_documents(request: Request, page: int = 1, title: Union[str, None] = "",
             content=document['_source']['content'],
             parentFolder=document['_source']['parentFolder']
         ))
+    response.headers.append("first", str(request.url.remove_query_params(["page"]).include_query_params(page=1)))
+    response.headers.append("last", str(request.url.remove_query_params(["page"]).include_query_params(
+                    page=str(int((resp['hits']['total']['value'] - 1) / documents_page_size) + 1))))
     return toRet
 
 

@@ -51,8 +51,8 @@ def get_favorites(request: Request, response: Response, page: int = 1,
         raise HTTPException(status_code=400, detail='Page number must be a positive integer')
     favorites_list = users_db.find_one({"_id": ObjectId(current_user.id)}, {"favorites": 1, "_id": 0})['favorites']
     favorite_docs = elastic.search(index="documents", body={
-        "from": (page - 1) * 10,
-        "size": 10,
+        "from": (page - 1) * document_page_size,
+        "size": document_page_size,
         "query": {
             "bool": {
                 "must": [
@@ -87,10 +87,11 @@ def get_favorites(request: Request, response: Response, page: int = 1,
             allCanRead=favorite['_source']['allCanRead'],
             allCanWrite=favorite['_source']['allCanWrite']
         ))
-    response.headers.append("first", str(request.url.remove_query_params(["page"])) + "?page=1")
-    response.headers.append("last", str(request.url.remove_query_params(["page"]))
-                            + "?page=" + str(int((favorite_count - 1) / 1) + 1))
-    return json.loads(json_util.dumps(favorites))
+    response.headers.append("first", str(request.url.remove_query_params(["page"]).include_query_params(page=1)))
+    response.headers.append("last", str(request.url.remove_query_params(["page"]).include_query_params(
+        page=str(int((favorite_count - 1) / document_page_size) + 1))))
+    return favorites
+    # return json.loads(json_util.dumps(favorites))
 
 
 @router.put(

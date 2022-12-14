@@ -85,10 +85,10 @@ def get_folders(request: Request, response: Response, page: int = 1,
             allCanWrite=folder['allCanWrite'],
             allCanRead=folder['allCanRead'],
         ))
-    response.headers.append("first", str(request.url.remove_query_params(["page"])) + "?page=1")
-    response.headers.append("last", str(request.url.remove_query_params(["page"]))
-                            + "?page=" + str(int((folder_count - 1) / folders_page_size) + 1))
-    return json.loads(json_util.dumps(folders))
+    response.headers.append("first", str(request.url.remove_query_params(["page"]).include_query_params(page=1)))
+    response.headers.append("last", str(request.url.remove_query_params(["page"]).include_query_params(
+                page=str(int((folder_count - 1) / folders_page_size) + 1))))
+    return folders
 
 
 @router.post(
