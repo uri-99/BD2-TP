@@ -18,7 +18,7 @@ Los miembros del grupo <b>Los Notilokos</b> somos:
       <a href="#acerca-del-proyecto">Acerca del proyecto</a>
       <ul>
         <li><a href="#tecnologías-usadas">Tecnologías usadas</a></li>
-        <li><a href="#app-scehma">App schema</a></li>
+        <li><a href="#data-base-schema">Data base schema</a></li>
       </ul>
     </li>
     <li>
