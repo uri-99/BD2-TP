@@ -79,7 +79,7 @@ Por último, para la autenticación de los usuarios usamos <a href="https://jwt.
 
 Se puede ver la estructura general de las bases de datos del proyecto a continuación:
 
-![alt text](assets/SchemasTpBD2.drawio.png)
+![alt text](https://github.com/uri-99/BD2-TP/blob/dc0f2f63e3f4cc3827646c039c037b889547f810/SchemasTpBD2.drawio.png)
 
 ## Instalación
 
