@@ -74,7 +74,9 @@ Por otro lado, para guardar los datos de la aplicación se utilizó la técnica 
 
 Por último, para la autenticación de los usuarios usamos <a href="https://jwt.io/">JSON Web Tokens</a>, o JWT, donde un usuario se autentica en primera instancia y se le devuelve un token que usará para autenticarse en los siguientes pedidos.
 
+### App schema
 
+![App schema](https://github.com/uri-99/BD2-TP/blob/dc0f2f63e3f4cc3827646c039c037b889547f810/SchemasTpBD2.drawio.png)
 
 ## Instalación
 
