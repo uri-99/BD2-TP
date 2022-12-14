@@ -39,10 +39,10 @@ Los miembros del grupo <b>Los Notilokos</b> somos:
         <a href="#deploy">Deploy</a>
     </li>
     <li>
-        <a href="#desarrollo del proyecto">Desarrollo del proyecto</a>
+        <a href="#desarrollo-del-proyecto">Desarrollo del proyecto</a>
             <ul>
                 <li><a href="#funcionalidades-agregadas">Funcionalidades agregadas</a></li>
-                <li><a href="#cambios-realizados">Cambios realizados</a></li>
+                <li><a href="#dificultades-encontradas">Dificultades encontradas</a></li>
             </ul>
     </li>
     <li>
