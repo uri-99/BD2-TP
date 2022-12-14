@@ -56,11 +56,11 @@ Los miembros del grupo <b>Los Notilokos</b> somos:
 
 Notilokos es un software para el manejo de notas, donde un usuario puede:
 - Crear, editar y borrar sus notas. Esto último solo lo puede hacer el dueño de la nota.
-- Compartir notas sólo a aquellos que le de permisos, o abrir la nota y que sea leíble o editable por cualquiera.
+- Compartir notas sólo a aquellos que le de permisos, o publicar la nota y que sea legíble o editable por cualquiera.
 - Organizar sus notas en carpetas que también puede compartir a quienes quiera.
 - Guardar notas de otros como notas favoritas.
 
-Se expone una API para los distintos pedidos del usuario, donde se puede usar el swagger generado para realizar dichos pedidos de una manera más fácil y cómoda.
+Se expone una API para los distintos pedidos de usuarios, donde se puede usar el Swagger generado para realizar dichos pedidos de una manera más fácil y cómoda.
 
 ### Tecnologías usadas
 
@@ -72,9 +72,9 @@ Se expone una API para los distintos pedidos del usuario, donde se puede usar el
 
 La API del proyecto se hizo usando <a href="https://fastapi.tiangolo.com/">FastAPI</a>, ya que es una tecnología fácil de usar y con mucha documentación disponible para el proceso de desarrollo, desde el primer endpoint local hasta el deploy. A su vez, nos permite generar el <a href="https://swagger.io/">Swagger</a> como documentación y primera interfaz para interactuar con la API.
 
-Por otro lado, para guardar los datos de la aplicación se utilizó la técnica de persistencia políglota, donde se eligieron como bases de datos a usar <a href="https://www.mongodb.com/">MongoDB</a> y <a href="https://www.elastic.co/elasticsearch/">Elasticsearch</a>. La primera, para el guardado de usuarios y carpetas, cuyo formato puede cambiar a futuro, mientras que las notas se guardan en Elasticsearch para agilizar la búsqueda de estas, que es la principal acción que realizarán los usuarios.
+Por otro lado, para guardar los datos de la aplicación se utilizó la técnica de persistencia políglota, donde se eligieron como bases de datos a usar <a href="https://www.mongodb.com/">MongoDB</a> y <a href="https://www.elastic.co/elasticsearch/">Elasticsearch</a>. La primera, para el guardado de usuarios y carpetas, cuyo formato puede cambiar a futuro, mientras que las notas se guardan en Elasticsearch para agilizar la búsqueda y modificación de estas, que son las principal acciónes que realizarán los usuarios.
 
-Por último, para la autenticación de los usuarios usamos <a href="https://jwt.io/">JSON Web Tokens</a>, o JWT para abreviar, donde un usuario se autentica en primera instancia y se le devuelve un token que usará para autenticarse en los siguientes pedidos.
+Por último, para la autenticación de los usuarios usamos <a href="https://jwt.io/">JSON Web Tokens</a>, o JWT, donde un usuario se autentica en primera instancia y se le devuelve un token que usará para autenticarse en los siguientes pedidos.
 
 
 
@@ -140,6 +140,15 @@ Para acceder al Swagger se deberá dirigir a la url http://127.0.0.1:8000/docs#/
 
 [![Product Name Screen Shot][product-screenshot]](https://petstore.swagger.io/)
 
+
+## Deploy
+
+La última versión de esta API ya se encuentra deployeada en la url https://u9usr1.deta.dev, conectada a bases de datos propias con data de ejemplo, para poder interactuar con ella y ver su funcionamiento.
+
+De igual manera, el Swagger se encuentra en https://u9usr1.deta.dev/docs donde se puede ver la documentación y llamar a los métodos HTTP de una forma más sencilla.
+
+
+
 ### Autenticación
 
 Para realizar ciertos pedidos se requiere que el usuario esté autenticado, por lo que primero se deberá crear una cuenta mediante un `POST /users` donde estén usuario y contraseña, como se aclara en el Swagger.
@@ -154,21 +163,14 @@ Authorization: Bearer <jwt_token>
 
 Este token será válido por hasta 30 minutos posterior a su generación, momento en que el usuario debe realizar el `POST /token` nuevamente.
 
+Para agilizar el log in, Swagger ofrece un botón `Authorize`, el cual el usuario podrá utilizar llenando su usuario y contraseña y apretando `Authorize`. Swagger mantendrá la sesión guardada siempre y cuando no se refresque la página.
+
 ### Permisos
 
 Igualmente, aunque el usuario haya iniciado sesión, hay una serie de acciones que sólo puede realizar si se le otorgaron los permisos necesarios o directamente no puede realizar, a ser:
 - Lectura y modificación de archivos que son privados o sólo compartidos a algún grupo de usuarios, en el que no se encuentra el usuario activo.
 - Borrado de notas, carpetas y cuentas de otros usuarios.
 - Modificaciones de la lista de favoritos de otros usuarios.
-
-
-
-## Deploy
-
-La última versión de esta API se encuentra deployeada en la url https://u9usr1.deta.dev, conectada a bases de datos propias con data de ejemplo, para poder interactuar con ella y ver su funcionamiento.
-
-De igual manera, el Swagger se encuentra en https://u9usr1.deta.dev/docs donde se puede ver la documentación y llamar a los métodos HTTP de una forma más sencilla.
-
 
 
 ## Desarrollo del proyecto
@@ -190,11 +192,11 @@ En comparación al MVP y sus funcionalidades detallados en <a href="https://docs
 Al igual que las mejoras, durante el desarrollo del proyecto se encontraron diversos problemas. Algunos se solucionaron cambiando la forma en que se encaraban mientras que otros se decició no cubrirlos debido a que el ratio esfuerzo/riesgo cubrido no se justificaba.
 
 Dentro de los primeros, están los siguientes casos:
-- A la hora de hacer el set-up de ES, el correrlo local consumía demasiados recursos, por lo que se decidió hostearlo remoto y aprovechar que como tanto la API como MongoDB se encontraban ya remotos, logrando que la aplicación por completo pueda ser accedida de manera remota. Otra opción explorada fue la recomendada por los profesores, de correr Elastic dentro de Docker para evitar dichos problemas.
+- A la hora de hacer el set-up de ES, el correrlo localmente utilizando Docker consumía demasiados recursos, por lo que se decidió hostearlo remoto. Así, ya que tanto la API como MongoDB se encontraban hosteadas en la nube, se pudo lograr que la aplicación sea completamente accedible de manera remota.
 - Las notas ahora se encuentran sólo en ES, opuesto a lo pensado inicialmente de que MongoDB tenga la copia original y ES una copia para búsquedas. Esto ya que, luego de evaluar la propuesta inicial, consideramos esta alternativa como más performante y fácil de implementar que tener que sincronizar ambas bases de datos y mantener una copia en ES.
-- Como el id en ES no es autogenerado, los id's de notas se generan del lado de la API. En cuanto al tipo de id's generados, se decidió adaptar un esquema de generación parecido al de mongo, usando <a href="https://docs.python.org/3/library/uuid.html">uuids</a> que toman como base el id de la máquina, la hora y una secuencia aleatoria, lo que lo hace ideal para ser generado en un contexto distribuido.
-- Para referenciar los objetos en MongoDB, inicialmente se usó el ObjectId de cada uno, pero se decidió cambiar al string que forma dicho ObjectId, ya que traía bastante problemas de parseos, y al siempre hacer dicho parseo se realentizaba el pedido en comparación a si se guardaba directamente el string.
-- Se cambió el campo de `public` de una nota o carpeta que indicaba quiénes podían acceder a ella por los de `allCanRead` y `allCanWrite`. Esto porque la primera opción indicaba un valor de acceso tanto para escritores y lectores que no llegaba a cubrir todos los casos posibles, mientras que con la segunda se puede rápidamente chequear sus valores, y en base a ellos decidir si también consultar los arrays correspondientes de lectores y escritores.
+- Como el id autogenerado de ES es incremental, y necesitabamos que sea uno más complejo y privado, los id's de notas se generan del lado de la API. Para generarlos, se decidió adaptar un esquema de generación parecido al de mongo, usando <a href="https://docs.python.org/3/library/uuid.html">uuids</a> que toman como base el id de la máquina, la hora y una secuencia aleatoria, lo que lo hace ideal para ser generado en un contexto distribuido.
+- Para referenciar los objetos en MongoDB, inicialmente se usó el ObjectId de cada uno, pero se decidió cambiar al string que forma dicho ObjectId, ya que traía bastantes problemas de parseos, y al siempre hacer dicho parseo se realentizaba el pedido en comparación a si se guardaba directamente en formato string.
+- Se cambió el campo de `public` de una nota o carpeta que indicaba quiénes podían acceder a ella por los de `allCanRead` y `allCanWrite`, ambos tomando valores booleanos. Esto se decidió así porque la primera opción indicaba un valor de acceso tanto para escritores y lectores que no llegaba a cubrir todos los casos posibles, mientras que con la segunda se puede rápidamente chequear sus valores, y en base a ellos decidir si también consultar los arrays correspondientes de lectores y escritores.
 
 
 
@@ -203,7 +205,7 @@ Dentro de los primeros, están los siguientes casos:
 Mejoras a futuro del proyecto:
 
 - [ ] Diseñar front de la aplicación
-- [ ] Implementar transacciones a nivel de software para las operaciones
+- [ ] Implementar transacciones atómicas a nivel de software para las operaciones que le correspondan
 - [ ] Implementar estructura MVC, con capas de front, servicios y persistencia, para separar responsabilidades y facilitar cambios a futuro.
 
 [fastapi-logo]: https://img.shields.io/badge/FastAPI-000000?logo=fastapi

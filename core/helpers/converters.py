@@ -42,29 +42,6 @@ def get_parsed_folder(folder_id: str, folder_db, user_username: str):
             return_folder['readers'] = []
             return return_folder
 
-        # writers_filter = 1
-        # readers_filter = 1
-        # if user_username == :
-        # writers_filter = {
-        #     '$filter': {
-        #         'input': '$writers',
-        #         'as': 'writers',
-        #         'cond': {
-        #             '$eq': [user_username, '$$writers']
-        #         }
-        #     }
-        # }
-        # readers_filter = {
-        #     '$filter': {
-        #         'input': '$readers',
-        #         'as': 'reader',
-        #         'cond': {
-        #             '$or': [{
-        #                 '$eq': [user_username, '$$reader']
-        #             }]
-        #         }
-        #     }
-        # }
         folder = list(folder_db.aggregate([
             {
                 '$match': {
