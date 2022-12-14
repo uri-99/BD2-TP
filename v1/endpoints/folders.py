@@ -4,7 +4,7 @@ import elasticsearch
 from bson.errors import InvalidId
 
 from core.auth.models import LoggedUser
-from core.auth.utils import get_current_user, user_has_permission, verify_logged_in
+from core.auth.utils import get_current_user, user_has_permission, verify_logged_in, verify_existing_users
 from core.helpers.converters import get_parsed_folder
 from core.helpers.db_client import ElasticManager
 from core.models.database import DBFolder
@@ -106,10 +106,7 @@ def create_folder(doc: NewFolder, request: Request, response: Response,
     are_writers = doc.writers is not None
     are_readers = doc.readers is not None
     are_docs = doc.content is not None
-    if are_writers and users_exist(doc.writers) is False:
-        raise HTTPException(status_code=400, detail='Writer sent does not exist')
-    if are_readers and users_exist(doc.readers) is False:
-        raise HTTPException(status_code=400, detail='Reader sent does not exist')
+    verify_existing_users(doc.writers, doc.readers)
     if are_docs and docs_exist(doc.content) is False:
         raise HTTPException(status_code=400, detail='Document to include on folder does not exist')
     now = datetime.datetime.now()
@@ -214,12 +211,13 @@ def modify_folder(id: str, update_folder: UpdateFolder,
     are_writers = update_folder.writers is not None
     are_readers = update_folder.readers is not None
     are_docs = update_folder.content is not None
-    if are_writers and users_exist(update_folder.writers) is False:
-        raise HTTPException(status_code=400, detail='Writer sent does not exist')
-    if are_readers and users_exist(update_folder.readers) is False:
-        raise HTTPException(status_code=400, detail='Reader sent does not exist')
+
+    verify_existing_users(update_folder.writers, update_folder.readers)
     if are_docs and is_docs_owner(update_folder.content, current_user) is False:
         raise HTTPException(status_code=400, detail='Document to include on folder does not exist or User is not owner')
+    if current_user.username != folder.createdBy and update_folder.writers is not None:
+        raise HTTPException(status_code=406, detail="User has no permission to edit writers")
+
     folders_db.update_one({"_id": ObjectId(id)}, {
         "$set": {
             "lastEditedBy": current_user.username,
