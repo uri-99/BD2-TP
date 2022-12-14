@@ -73,11 +73,13 @@ La API del proyecto se hizo usando <a href="https://fastapi.tiangolo.com/">FastA
 
 Por otro lado, para guardar los datos de la aplicación se utilizó la técnica de persistencia políglota, donde se eligieron como bases de datos a usar <a href="https://www.mongodb.com/">MongoDB</a> y <a href="https://www.elastic.co/elasticsearch/">Elasticsearch</a>. La primera, para el guardado de usuarios y carpetas, cuyo formato puede cambiar a futuro, mientras que las notas se guardan en Elasticsearch para agilizar la búsqueda y modificación de estas, que son las principales acciones que realizarán los usuarios.
 
+Se puede ver la estructura general de las bases de datos del proyecto a continuación:
+
 Por último, para la autenticación de los usuarios usamos <a href="https://jwt.io/">JSON Web Tokens</a>, o JWT, donde un usuario se autentica en primera instancia y se le devuelve un token que usará para autenticarse en los siguientes pedidos.
 
 ### App schema
 
-![App schema](https://github.com/uri-99/BD2-TP/blob/dc0f2f63e3f4cc3827646c039c037b889547f810/SchemasTpBD2.drawio.png)
+![alt text](assets/SchemasTpBD2.drawio.png)
 
 ## Instalación
 
