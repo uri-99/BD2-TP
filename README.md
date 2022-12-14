@@ -75,7 +75,7 @@ Por otro lado, para guardar los datos de la aplicación se utilizó la técnica 
 
 Por último, para la autenticación de los usuarios usamos <a href="https://jwt.io/">JSON Web Tokens</a>, o JWT, donde un usuario se autentica en primera instancia y se le devuelve un token que usará para autenticarse en los siguientes pedidos.
 
-### App schema
+### Data base schema
 
 Se puede ver la estructura general de las bases de datos del proyecto a continuación:
 
